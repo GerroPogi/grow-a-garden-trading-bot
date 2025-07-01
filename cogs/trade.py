@@ -21,6 +21,12 @@ growthMutations = {
     "ripe": 1
 }
 
+pets={
+    "racoon",
+    "dragonfly",
+    "butterfly"
+}
+
 class DefaultView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -127,6 +133,7 @@ class TradeCog(commands.Cog):
         view = TradeView(interaction.user)
         await interaction.response.send_message("Trade View opened!", view=view, ephemeral=True)
         view.set_original_interaction(interaction)
+    
     
     
     async def cog_load(self):

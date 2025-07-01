@@ -27,7 +27,7 @@ class GrowAGardenBot(commands.Bot):
         self.tree.clear_commands(guild=self.guild)
         
         for file in os.listdir("./cogs"):
-            if file.endswith(".py"):
+            if file.endswith(".py") and not file.startswith("_"):
                 try:
                     # await self.unload_extension(f"cogs.{file[:-3]}")
                     await self.load_extension(f"cogs.{file[:-3]}")
