@@ -47,7 +47,7 @@ class AdminCog(commands.Cog):
         await interaction.response.send_message("Reloading all cogs...",ephemeral=True,delete_after=5)
         channel= interaction.channel
         for filename in os.listdir("./cogs"):
-            if filename.endswith(".py"):
+            if filename.endswith(".py") and not filename.startswith("_"):
                 try:
                     await self.bot.reload_extension(f"cogs.{filename[:-3]}")
                     await channel.send(f"Reloaded cog: {filename[:-3]}",delete_after=5,mention_author=False)

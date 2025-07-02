@@ -42,6 +42,7 @@ class GrowAGardenBot(commands.Bot):
         if message.author.bot:
             return
         
+        
         print(f"Received message from {message.author}: {message.content}")
     
     async def on_ready(self):
