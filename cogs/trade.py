@@ -7,17 +7,13 @@ Ts is for handling the trading. The UI and allat.
 """
 
 import discord
-from ._items import pets, gears, fruits, mutations # remove the dot when debugging cuz discord.py is the shit
+# from .trades._items import pets, gears, fruits, mutations # remove the dot when debugging cuz discord.py is the shit
 from discord.ext import commands
+from views import DefaultTradingView
+
+# from trades.pets import PetsTradeView
 from discord import app_commands
 
-# Default trading View
-class DefaultTradingView(discord.ui.View):
-    original_interaction: discord.Interaction
-    def set_original_interaction(self,interaction:discord.Interaction):
-        self.original_interaction=interaction
-    def edit_message(self,content="",embed=None,view=None):
-        self.original_interaction.edit_original_response(content=content,embed=embed,view=view)
 
 # Class to start it all
 
@@ -39,22 +35,36 @@ class ChooseTrade(DefaultTradingView):
     
     @discord.ui.button(label="Pets",style=discord.ButtonStyle.primary)
     async def pets_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        from .trades.pets import PetsTradeView
+
         embed = discord.Embed(
             title="Trade a Pet!",
             description="Choose a pet you're willing to trade. Age is not counted in the selection so pick as many as you want!",
             color=discord.Color.red()
         )
+        print("skibidi")
         await self.original_interaction.edit_original_response(embed=embed,view=PetsTradeView(self.original_interaction))
         await interaction.response.defer()
     @discord.ui.button(label="Fruits",style=discord.ButtonStyle.primary)
     async def fruits_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        await self.original_interaction.edit_original_response(view=None,embed=None,content="You chose fruits!")
+        from .trades.fruits import FruitsTradeView
+        embed = discord.Embed(
+            title="Trade a Fruit!",
+            description="Choose a fruit you're willing to trade.",
+            color=discord.Color.red()
+        )
+        await self.original_interaction.edit_original_response(embed=embed,view=FruitsTradeView(self.original_interaction))
         await interaction.response.defer()
     @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
     async def gears_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        await self.original_interaction.edit_original_response(view=None,embed=None,content="You chose gears!")
+        from .trades.gears import GearsTradeView
+        embed = discord.Embed(
+            title="Trade a Gear!",
+            description="Choose a gear you're willing to trade.",
+            color=discord.Color.red()
+        )
+        await self.original_interaction.edit_original_response(embed=embed,view=GearsTradeView(self.original_interaction))
         await interaction.response.defer()
-
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified
     ex. trade UI + embed, just put it in location
@@ -92,6 +102,21 @@ class GoBackTradeButton(discord.ui.Button):
 
 trades_queue={}
 
+def add_trade(user_id, trade, offer=False):
+    global trades_queue
+    side = "offer" if offer else "request"
+    
+    # Ensure user entry exists
+    trades_queue[user_id] = trades_queue.get(user_id, {})
+    
+    # Ensure offer/request section exists
+    trades_queue[user_id][side] = trades_queue[user_id].get(side, {})
+
+    # Add each item category (like 'pets', 'fruits') to the trade
+    for category, items in trade.items():
+        trades_queue[user_id][side].setdefault(category, [])
+        trades_queue[user_id][side][category].extend(items)
+
 def create_trade_embed(user_id):
     """It's basically the home page of the trades
     Purpose: to make it easier for me to go back like the button
@@ -104,7 +129,7 @@ def create_trade_embed(user_id):
     """
     
     embed = discord.Embed(
-            title="Create a Trade!",
+            title="Create a Trade! Skibidi",
             description="Let's create a trade. What are you willing to trading for?",
             color=discord.Color.blue()
         )
@@ -123,11 +148,20 @@ def create_trade_embed(user_id):
         value="Ex. Master Sprinkler, Sweet Soaker Sprinkler, Lightning Rod",
         inline=True
     )
+    offer_content=""
+    if (trades:=trades_queue.get(user_id,{}).get("offer",{})):
+        for key, values in trades.items():
+            offer_content+=f"{key}: \n\n"
+            for value in values:
+                offer_content+=f"- {value.capitalize()}\n"
+    else:
+        offer_content="No offer yet."
     embed.add_field(
-        name="Current trade:",
-        value=trades_queue.get(user_id, {}) or "No pending offer yet",
+        name="Current offer:",
+        value=offer_content,
         inline=True
     )
+    # print(trades_queue,"trades_queue") # used it for debugging
     return embed
 
 # Basically the commands

@@ -13,6 +13,10 @@
 ## In Progress
 
 - [ ] Player create a trade
+- [ ] Player select a gear
+- [ ] Add a fix for trading_queue var for trades
+- [ ] Player select a fruit
+- [ ] Player request for something
 
 ## Completed
 
