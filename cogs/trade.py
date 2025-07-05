@@ -113,9 +113,30 @@ def add_trade(user_id, trade, offer=False):
     trades_queue[user_id][side] = trades_queue[user_id].get(side, {})
 
     # Add each item category (like 'pets', 'fruits') to the trade
-    for category, items in trade.items():
-        trades_queue[user_id][side].setdefault(category, [])
-        trades_queue[user_id][side][category].extend(items)
+    for category in trade.keys():
+        
+        if isinstance(trade[category], list):
+            trades_queue[user_id][side].setdefault(category, [])
+            trades_queue[user_id][side][category].extend(trade[category])
+        
+        if isinstance(trade[category], dict):
+            for key, value in trade[category].items():
+                # Get current dict we're adding on
+                target_dict = trades_queue[user_id][side].setdefault(category, {})
+                print(target_dict,"target dict")
+
+                # If key doesn't exist yet, just add it
+                if key not in target_dict:
+                    target_dict[key] = value
+                else:
+                    # Generate a unique key based on count of existing keys with same base
+                    suffix = 1
+                    new_key = f"{key}{suffix}"
+                    while new_key in target_dict:
+                        suffix += 1
+                        new_key = f"{key}{suffix}"
+                    target_dict[new_key] = value
+
 
 def create_trade_embed(user_id):
     """It's basically the home page of the trades
@@ -151,9 +172,22 @@ def create_trade_embed(user_id):
     offer_content=""
     if (trades:=trades_queue.get(user_id,{}).get("offer",{})):
         for key, values in trades.items():
-            offer_content+=f"{key}: \n\n"
-            for value in values:
-                offer_content+=f"- {value.capitalize()}\n"
+            if key=="fruit":
+                offer_content+=f"{key.capitalize()}:\n"
+                print(trades,"trades")  
+                for fruit,mutations in trades[key].items():
+                    offer_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
+                    for type, mutations in values[fruit].items():
+                        offer_content+=f"**{type.capitalize()}** Mutations:\n" # mutation type
+                        print(mutations,"mutations")
+                        for mutation in mutations:
+                            offer_content+=f"- {mutation.capitalize()}\n" # Mutations
+                    offer_content+="\n"
+            else:
+                offer_content+=f"{key.capitalize()}:\n"
+                for value in values:
+                    offer_content+=f"- {value.capitalize()}\n"
+            offer_content+="\n"
     else:
         offer_content="No offer yet."
     embed.add_field(
