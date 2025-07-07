@@ -29,7 +29,7 @@ class GearsTradeView(ButtonPageView):
         # super().__init__(timeout=None)
         self.original_interaction = original_interaction
         items=[]
-        for category in list(gears.keys())[:5]:
+        for category in list(gears.keys()):
             items.append(self.create_button(category))
         super().__init__(items,original_interaction)
     def create_button(self,category:str) -> discord.ui.Button:

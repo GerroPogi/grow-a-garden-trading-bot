@@ -1,19 +1,11 @@
 import discord
+
+from views.buttons import ConfirmButton
 from ..trade import add_trade, create_trade_embed, DefaultTradingView, GoBackTradeButton, ChooseTrade
 from ._items import fruits, mutations
 from views import ButtonPageView
 
-class ConfirmButton(discord.ui.Button):
-    def __init__(self, callback,interaction, *select : discord.ui.Select, **kwargs):
-        self.select=select
-        self.interaction = interaction
-        self.call_back=callback
-        super().__init__(label="Confirm Choice", style=discord.ButtonStyle.green)
-    
-    async def callback(self, interaction:discord.Interaction):
-        
-        await self.call_back(self.interaction,*self.select)
-        await interaction.response.defer()
+
 
 async def add_fruits(interaction: discord.Interaction, *fruits_selects: discord.ui.Select):
     user_id= interaction.user.id
@@ -39,11 +31,12 @@ async def add_fruits(interaction: discord.Interaction, *fruits_selects: discord.
 class FruitsSelect(discord.ui.Select):
     def __init__(self,category,original_interaction):
         self.original_interaction = original_interaction
+        shown_fruits = fruits[category]
         options=[
             discord.SelectOption(
                 label=name.capitalize(),
                 value=name
-                ) for name in fruits[category]
+                ) for name in list(shown_fruits.keys())[:25]
         ]
         super().__init__(placeholder=category.capitalize()+" Fruits", options=options,max_values=1,min_values=1)
     async def callback(self, interaction:discord.Interaction):
@@ -65,18 +58,29 @@ class FruitGrowthMutationsSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class FruitEnvironmentMutationsSelect(discord.ui.Select):
-    def __init__(self):
-        
+    def __init__(self,lower_half:bool):
+        mutationsList=list(mutations["environment"].keys())
+        print(len(mutationsList),"Mutations lenght")
+        if lower_half:
+            selected_keys=mutationsList[:24]
+        else:
+            selected_keys=mutationsList[24:]
         options=[
+            discord.SelectOption(
+                label="None",
+                value="none"
+            )
+            ] + [ #forgive me for such awful syntax. python is a bitch
             discord.SelectOption(
                 label=name.capitalize(),
                 value=name
-                ) for name in list(mutations["environment"].keys())[:25]
+                ) for name in selected_keys
         ]
         
-        super().__init__(placeholder="Fruit Environment Mutations", options=options,max_values=25,min_values=1)
+        super().__init__(placeholder="Fruit Environment Mutations", options=options,max_values=len(selected_keys),min_values=1)
     async def callback(self, interaction:discord.Interaction):
         await interaction.response.defer()
+        
 
 class FruitsTradeView(ButtonPageView):
     def __init__(self, original_interaction):
@@ -116,10 +120,12 @@ class FruitsTradeView(ButtonPageView):
                 view=DefaultTradingView()
                 fruitSelect = FruitsSelect(category,self.original_interaction)
                 growthSelect = FruitGrowthMutationsSelect()
-                enviromentSelect = FruitEnvironmentMutationsSelect()
+                enviromentSelect1 = FruitEnvironmentMutationsSelect(False)
+                enviromentSelect2 = FruitEnvironmentMutationsSelect(True)
                 view.add_item(fruitSelect) # adds the fruits select drop down
                 view.add_item(growthSelect)
-                view.add_item(enviromentSelect)
+                view.add_item(enviromentSelect1)
+                view.add_item(enviromentSelect2)
                 location={ 
                     "embed":discord.Embed(
                     title="Trade a Fruit!",
@@ -129,7 +135,7 @@ class FruitsTradeView(ButtonPageView):
                     "view":self
                     }
                 view.add_item(GoBackTradeButton(location,self.original_interaction))
-                view.add_item(ConfirmButton(add_fruits,self.original_interaction,fruitSelect,growthSelect,enviromentSelect))
+                view.add_item(ConfirmButton(add_fruits,self.original_interaction,fruitSelect,growthSelect,enviromentSelect1,enviromentSelect2))
                 
                 await self.original_interaction.edit_original_response(embed=embed,view=view) # Updates the message
                 await interaction.response.defer()

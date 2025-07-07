@@ -599,7 +599,6 @@ mutations={
         "rainbow": 50,
     },
     "environment":{
-        "none": 1,
         "aurora": 90,
         "alienlike": 100,
         "bloodlit": 4,

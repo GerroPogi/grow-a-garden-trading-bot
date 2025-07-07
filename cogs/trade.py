@@ -173,12 +173,12 @@ def create_trade_embed(user_id):
     if (trades:=trades_queue.get(user_id,{}).get("offer",{})):
         for key, values in trades.items():
             if key=="fruit":
-                offer_content+=f"{key.capitalize()}:\n"
+                offer_content+=f"{key.capitalize()}s:\n"
                 print(trades,"trades")  
                 for fruit,mutations in trades[key].items():
                     offer_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
                     for type, mutations in values[fruit].items():
-                        offer_content+=f"**{type.capitalize()}** Mutations:\n" # mutation type
+                        offer_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
                         print(mutations,"mutations")
                         for mutation in mutations:
                             offer_content+=f"- {mutation.capitalize()}\n" # Mutations
