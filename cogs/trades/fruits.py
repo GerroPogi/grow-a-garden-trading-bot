@@ -88,7 +88,7 @@ class FruitsTradeView(ButtonPageView):
         buttons=[]
         for category in list(fruits.keys()):
             buttons.append(self.create_button(category))    
-        super().__init__(buttons,original_interaction)
+        super().__init__(buttons,original_interaction,True)
         
         
     def create_button(self,category:str) -> discord.ui.Button:

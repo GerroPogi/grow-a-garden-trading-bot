@@ -1,4 +1,6 @@
 import discord
+
+from views.trades.offer import TradeView
 from ..trade import add_trade, create_trade_embed, DefaultTradingView, GoBackTradeButton, ChooseTrade
 from ._items import gears
 from views import ButtonPageView
@@ -24,7 +26,7 @@ class GearsSelect(discord.ui.Select):
         await interaction.response.defer()
 
 
-class GearsTradeView(ButtonPageView):
+class OldGearsTradeView(ButtonPageView):
     def __init__(self, original_interaction):
         # super().__init__(timeout=None)
         self.original_interaction = original_interaction
@@ -73,3 +75,37 @@ class GearsTradeView(ButtonPageView):
                 await interaction.response.defer()
             
         return ButtonCategory()
+
+async def add_gear(interaction: discord.Interaction, *gears_selects: discord.ui.Select):
+    user_id= interaction.user.id
+    for select in gears_selects:
+        if select.values!="none": break
+    gear={
+        "gears":select.values
+        }
+    print("added gear:",gear)
+    add_trade(user_id,gear,offer=True)
+    
+    embed = create_trade_embed(user_id) 
+    await interaction.edit_original_response(content="",view=ChooseTrade(interaction),embed=embed)
+    
+
+
+class GearsTradeView(TradeView):
+    def __init__(self, original_interaction,homeView):
+        trade_dict = gears
+        category_format = "{0} Gears"
+        message = {
+            "title": "Trade a Gear!",
+            "description": "Choose a gear you're willing to trade.",
+            "placeholder": "Select a gear"
+        }
+        confirm_callback = add_gear
+        super().__init__(
+            original_interaction=original_interaction,
+            trade_dict=trade_dict,
+            category_format=category_format,
+            message=message,
+            confirm_callback=confirm_callback,
+            homeView=homeView,
+            )

@@ -53,7 +53,9 @@ class ChooseTrade(DefaultTradingView):
             description="Choose a fruit you're willing to trade.",
             color=discord.Color.red()
         )
-        await self.original_interaction.edit_original_response(embed=embed,view=FruitsTradeView(self.original_interaction))
+        view = FruitsTradeView(self.original_interaction)
+        await view.setup()
+        await self.original_interaction.edit_original_response(embed=embed,view=view)
         await interaction.response.defer()
     @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
     async def gears_callback(self,interaction:discord.Interaction, button: discord.ui.button):
@@ -63,7 +65,9 @@ class ChooseTrade(DefaultTradingView):
             description="Choose a gear you're willing to trade.",
             color=discord.Color.red()
         )
-        await self.original_interaction.edit_original_response(embed=embed,view=GearsTradeView(self.original_interaction))
+        view= GearsTradeView(self.original_interaction,self)
+        await view.setup()
+        await self.original_interaction.edit_original_response(embed=embed,view=view)
         await interaction.response.defer()
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified
@@ -72,6 +76,8 @@ class GoBackTradeButton(discord.ui.Button):
     Args:
         location (dict): the location it's going back to. format must be like this or it will get ignored: {content, embed, view}
         original_interaction (discord.Interaction): the message it's going to change (if there is)
+
+    Windsurf such a good boy
     """
     def __init__(self, location:dict,original_interaction:discord.Interaction=None):
         super().__init__(label="Go back")

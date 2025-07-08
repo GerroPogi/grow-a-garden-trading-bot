@@ -1,5 +1,6 @@
 import discord
 from .buttons import NextButton,BackButton, ConfirmButton
+import asyncio
 
 
 # Button Pages view
@@ -12,7 +13,13 @@ class ButtonPageView(discord.ui.View):
     """When it has a lot of discord.ui.Items (it has a limit of 5), it will sort them out easily
     
     """
-    async def __init__(self,items:list[discord.ui.Item],original_interaction:discord.Interaction,home: bool = True):
+    def __init__(
+        self,
+        items:list[discord.ui.Item],
+        original_interaction:discord.Interaction,
+        home: bool = True,
+        homeView: discord.ui.View = discord.ui.View()
+        ):
         """
         Initializes the ButtonPageView
 
@@ -23,16 +30,19 @@ class ButtonPageView(discord.ui.View):
         """
         self.original_interaction=original_interaction
         self.willGoHome = home
+        self.homeView = homeView
+        super().__init__(timeout=None)
+        self.items=items
+        self.index=0
+    
+    
+    async def setup(self):
+        self.original_message=await self.original_interaction.original_response()
         
         if self.willGoHome:
             self.add_item(BackButton(self.goHome))
-            self.original_response=await self.original_interaction.original_response()
         
-        self.items=items
-        await super().__init__(timeout=None)
-        # self.add_item(BackButton(self.goBack))
-        self.index=0
-        await self.add_allowed_items() # Add the first 3 items
+        self.add_allowed_items()
         self.add_item(NextButton(self.goNext))
 
     async def goBack(self,interaction:discord.Interaction):
@@ -53,7 +63,11 @@ class ButtonPageView(discord.ui.View):
         self.add_item(BackButton(self.goBack))
         self.add_allowed_items()
         self.add_item(NextButton(self.goNext))
-        await self.original_interaction.edit_original_response(view=self.original_response)
+        
+        content = self.original_message.content
+        embed = self.original_message.embeds[0]
+        
+        await self.original_interaction.edit_original_response(content=content, embed=embed, view =self.homeView)
         await interaction.response.defer()
     
     async def goNext(self,interaction:discord.Interaction):
