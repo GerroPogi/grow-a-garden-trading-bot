@@ -57,7 +57,7 @@ async def add_pets_offer(interaction: discord.Interaction, view: discord.ui.View
         
         add_trade(user_id,{"pets":view.children[0].values},offer=offer)
         
-        embed = create_trade_embed(user_id) 
+        embed = create_trade_embed(user_id,offer) 
         
         await interaction.edit_original_response(content="",view=OfferTrade(interaction),embed=embed)
         await interaction.response.defer()

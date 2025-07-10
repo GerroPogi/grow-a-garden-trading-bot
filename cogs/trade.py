@@ -85,11 +85,7 @@ class OfferTrade(DefaultTradingView):
     @discord.ui.button(label="Next",style=discord.ButtonStyle.primary)
     async def next_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         
-        embed= discord.Embed(
-            title="Request your Trade!",
-            description="What do you want in exchange for your treasure?",
-            color = discord.Color.blue()
-        )
+        embed= create_trade_embed(interaction.user.id,False)
         
         view = RequestTrade(self.original_interaction)
         await self.original_interaction.edit_original_response(embed=embed,view=view)
@@ -150,6 +146,11 @@ class RequestTrade(DefaultTradingView):
         
         await interaction.response.defer()
     
+    
+    @discord.ui.button(label="Confirm Trade",style=discord.ButtonStyle.green)
+    async def confirm_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        await interaction.response.defer()
+        await self.edit_message(view=None,content="Feature not added yet")
 
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified
@@ -226,7 +227,7 @@ def add_trade(user_id, trade, offer=False):
                     target_dict[new_key] = value
 
 
-def create_trade_embed(user_id):
+def create_trade_embed(user_id:int, offer=True):
     """It's basically the home page of the trades
     Purpose: to make it easier for me to go back like the button
 
@@ -236,10 +237,10 @@ def create_trade_embed(user_id):
     Returns:
         discord.Embed: The embed with the updated info
     """
-    
+    description= "Let's create an offer. What are you willing to trading for?" if offer else "Let's create an request. What do you want in exchange for your treasure?"
     embed = discord.Embed(
             title="Create a Trade!",
-            description="Let's create a trade. What are you willing to trading for?",
+            description=description,
             color=discord.Color.blue()
         )
     embed.add_field(
@@ -257,8 +258,6 @@ def create_trade_embed(user_id):
         value="Ex. Master Sprinkler, Sweet Soaker Sprinkler, Lightning Rod",
         inline=True
     )
-    print("trades_queue",trades_queue)
-    print("creating offer")
     offer_content=""
     if (offer:=trades_queue.get(user_id,{}).get("offer",{})): # I did the most of the work so apologies gang 🥀🥀
         for key, values in offer.items():
@@ -285,9 +284,6 @@ def create_trade_embed(user_id):
         value=offer_content,
         inline=True
     )
-    print("done creating offer")
-    
-    print("creating request")
     
     request_content=""
     if (request:=trades_queue.get(user_id,{}).get("request",{})):
@@ -313,7 +309,6 @@ def create_trade_embed(user_id):
         value=request_content,
         inline=True
     )
-    print("done creating request")
     
     # print(trades_queue,"trades_queue") # used it for debugging
     return embed

@@ -81,7 +81,7 @@ async def add_fruits(interaction: discord.Interaction,view:discord.ui.View, offe
     print("added fruit:",fruit)
     add_trade(user_id,fruit,offer=offer)
     
-    embed = create_trade_embed(user_id) 
+    embed = create_trade_embed(user_id,offer) 
     await interaction.edit_original_response(content="",view=OfferTrade(interaction),embed=embed)
     
 class FruitGrowthMutationsSelect(discord.ui.Select):

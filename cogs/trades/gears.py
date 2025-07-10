@@ -61,7 +61,7 @@ async def add_gear_offer(interaction: discord.Interaction, view: discord.ui.View
     print("added gear:",gear)
     add_trade(user_id,gear_dict,offer=offer)
     
-    embed = create_trade_embed(user_id) 
+    embed = create_trade_embed(user_id,offer) 
     await interaction.edit_original_response(view=view,embed=embed)
     
 # async def add_gear_request() # just an idea for requests
