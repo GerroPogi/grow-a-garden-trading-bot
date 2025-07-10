@@ -1,8 +1,12 @@
+import asyncio
 import discord
-from ..trade import add_trade, create_trade_embed, DefaultTradingView, GoBackTradeButton, ChooseTrade
-from views import ButtonPageView
+from ..trade import TradeView, add_trade, create_trade_embed, DefaultTradingView, GoBackTradeButton, ChooseTrade
 
 from ._items import pets
+
+title:str = "Trade a Pet!",
+description:str = "Choose a pet you're willing to trade.",
+placeholder: str = "Select a pet"
 
 class PetsSelect(discord.ui.Select):
     def __init__(self,category,original_interaction):
@@ -23,53 +27,73 @@ class PetsSelect(discord.ui.Select):
         await self.original_interaction.edit_original_response(content="",view=ChooseTrade(self.original_interaction),embed=embed)
         await interaction.response.defer()
 
+async def invalid_choice(interaction:discord.Interaction,reason:str,original_view:discord.ui.View):
+    
+    old_embed = discord.Embed(
+        title=title,
+        description=description,
+        color=discord.Color.red()
+    )
+    feedback=discord.Embed(
+        title="Choice error!",
+        color=discord.Color.red()
+    )
+    feedback.description=reason+" Restarting in 5 seconds..."
+    
+    await interaction.edit_original_response(
+        embed=feedback,
+        view=discord.ui.View()
+    )
+    await asyncio.sleep(1)
+    for i in range(4,0,-1):
+        
+        feedback.description=reason+" Restarting in "+str(i)+" seconds..."
+        await interaction.edit_original_response(
+            embed=feedback,
+        )
+        await asyncio.sleep(1)
+        
+    await interaction.edit_original_response(
+        embed=old_embed,
+        view=original_view
+    )
 
-class PetsTradeView(ButtonPageView):
-    def __init__(self, original_interaction):
-        # super().__init__(timeout=None)
-        self.original_interaction = original_interaction
-        items=[]
-        for category in list(pets.keys()):
-            items.append(self.create_button(category))
-        super().__init__(items,original_interaction)
-    def create_button(self,category:str) -> discord.ui.Button:
-        """Creates a button to for a specific category that will show a new embed as well as a new select so that the screen doesnt get cluttered with random ahh stuff
-        also its cleaner
+async def add_pets(interaction: discord.Interaction, view: discord.ui.View):
+        user_id= interaction.user.id
+        
+        # 3 selects mode (When there is only 1 pet select object):
+        if isinstance(view.children[1],GoBackTradeButton):
+            pets= view.children[0].values
+        else: 
+            # 4 selects mode (When there is more than 1 pet select object because discord can only handle 25):
+            pets = view.children[0].values+view.children[1].values
+        
+        if not pets:
+            await invalid_choice(interaction,"Please select a pet.",view)
+            return
+        
+        add_trade(user_id,{"pets":view.children[0].values},offer=True)
+        
+        embed = create_trade_embed(user_id) 
+        
+        await interaction.edit_original_response(content="",view=ChooseTrade(interaction),embed=embed)
+        await interaction.response.defer()
 
-        Args:
-            category (str): What category is it going to be (ex. Common, Rare, Legendary, etc)
-        
-        Returns:
-            discord.ui.Button: The very special button
-        
-        """
-        
-        # I might have overdid the optimization lmao
-        
-        
-        original_interaction=self.original_interaction
-        class ButtonCategory(discord.ui.Button):
-            def __init__(self1):
-                self1.original_interaction=original_interaction
-                super().__init__(label=category.capitalize()+" Pets") # To add the button name
-            
-            async def callback(self1, interaction: discord.Interaction):
-                embed= discord.Embed(
-                    title="Pick a pet",
-                    description="Choose how many as you want lmao"
-                ) # When it calls it gives this embed and this view
-                view=DefaultTradingView()
-                view.add_item(PetsSelect(category,self.original_interaction)) # adds the pets select drop down
-                location={ 
-                    "embed":discord.Embed(
-                    title="Trade a Pet!",
-                    description="Choose a pet you're willing to trade. Age is not counted in the selection so pick as many as you want!",
-                    color=discord.Color.red()
-                    ),
-                    "view":self
-                    }
-                view.add_item(GoBackTradeButton(location,self.original_interaction))
-                await self.original_interaction.edit_original_response(embed=embed,view=view) # Updates the message
-                await interaction.response.defer()
-            
-        return ButtonCategory()
+class PetsTradeView(TradeView):
+    def __init__(self, original_interaction: discord.Interaction, homeView: discord.ui.View):
+        trade_dict = pets
+        category_format = "{0} Pets"
+        message = {
+            "title": title,
+            "description": description,
+            "placeholder": placeholder
+        }
+        confirm_callback = add_pets
+        super().__init__(
+            original_interaction=original_interaction,
+            trade_dict=trade_dict,
+            category_format=category_format,
+            message=message,
+            confirm_callback=confirm_callback,
+            homeView=homeView,
+        )

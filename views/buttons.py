@@ -6,16 +6,16 @@ def checkIfAsync(func):
     return inspect.iscoroutinefunction(func)
 
 class ConfirmButton(discord.ui.Button):
-    def __init__(self, callback,interaction, *select : discord.ui.Select, **kwargs):
-        self.select=select
+    def __init__(self, callback: Callable[[discord.Interaction, discord.ui.View], None],interaction, view:discord.ui.View, **kwargs):
+        self.original_view=view
         self.interaction = interaction
         self.call_back=callback
         super().__init__(label="Confirm Choice", style=discord.ButtonStyle.green)
     
     async def callback(self, interaction:discord.Interaction):
-        
-        await self.call_back(self.interaction,*self.select)
         await interaction.response.defer()
+        await self.call_back(self.interaction,self.original_view)
+        
     
 class NextButton(discord.ui.Button):
     def __init__(self,goBackFunction: Callable[[discord.Interaction],None]):

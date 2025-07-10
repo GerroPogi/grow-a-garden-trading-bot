@@ -4,6 +4,10 @@
 # Python cache
 __pycache__/
 *.pyc
+.mypy_cache
+
+# Test files
+test.py
 
 
 # IDE and OS files

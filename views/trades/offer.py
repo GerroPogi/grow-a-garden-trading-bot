@@ -4,6 +4,7 @@ from cogs.trade import GoBackTradeButton
 from views.buttons import ConfirmButton
 from ..defaultTrade import DefaultTradingView
 from ..buttonPageViews import ButtonPageView
+from typing import Callable
 # from typing import Union, Any # I thought of something genius till it wasnt lmao
 
 class ItemSelect(discord.ui.Select):
@@ -24,6 +25,8 @@ class ItemSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
+# I feel like a genius lol
+
 class TradeView(ButtonPageView):
     
     def __init__(
@@ -38,7 +41,7 @@ class TradeView(ButtonPageView):
             "placeholder":"Select an item"
             },
         list_of_items: list[discord.ui.Item] = [],
-        confirm_callback: callable = None,
+        confirm_callback: Callable[[discord.Interaction, discord.ui.View], None] = None,
         homeView: discord.ui.View = discord.ui.View()
         ):
         
@@ -53,8 +56,9 @@ class TradeView(ButtonPageView):
                 "description":"Choose an item you want to trade.",
                 "placeholder":"Select an item"
             }.
-            list_of_items (list[discord.ui.Item], optional): Items to be added to the view. Defaults to [].
-            confirm_callback (callable, optional): A callback to be called when the confirm button is clicked. Defaults to None.
+            list_of_items (list[discord.ui.Item], optional): Custom Items to be added to the view. Defaults to [].
+            confirm_callback (Callable[[discord.Interaction, discord.ui.View]], None): A callback to be called when the confirm button is clicked. Defaults to None.
+            homeView (discord.ui.View): It is the view where TradeView was initialized so that it can return when the user goes back
         """
         self.message = message
         self.original_interaction = original_interaction
@@ -62,7 +66,7 @@ class TradeView(ButtonPageView):
         self.trade_dict = trade_dict
         items=[]
         self.list_of_items=list_of_items
-        self.confirm_callback:callable[discord.Interaction,discord.ui.Select]=confirm_callback
+        self.confirm_callback:callable[discord.Interaction,discord.ui.View]=confirm_callback
         for category in list(trade_dict.keys()):
             items.append(self.create_button(category))
         
@@ -91,6 +95,7 @@ class TradeView(ButtonPageView):
                 values
                 )
             selects.append(item)
+        
         
         return selects
         
@@ -127,6 +132,7 @@ class TradeView(ButtonPageView):
                 ) # When it calls it gives this embed and this view
                 view=DefaultTradingView()
                 itemSelects=parent.create_selects(category)
+                
                 for itemSelect in itemSelects:
                     view.add_item(itemSelect)
                 
@@ -141,9 +147,18 @@ class TradeView(ButtonPageView):
                     ),
                     "view":parent
                     }
-                view.add_item(GoBackTradeButton(location,parent.original_interaction))
-                view.add_item(ConfirmButton(parent.confirm_callback,parent.original_interaction,*itemSelects,*parent.list_of_items))
-                
+                if len(view.children)<4: # Still has space for Go Back Trade Button 
+                    view.add_item(GoBackTradeButton(location,parent.original_interaction))
+                    print("Go back Trade Button is inside the view")
+                else:
+                    print("Go back Trade Button is not inside the view")
+                    
+                if len(view.children)<5: # Still has space for Confirm Button (also including Go back Button or maybe not)
+                    view.add_item(ConfirmButton(parent.confirm_callback,parent.original_interaction,view))
+                    print("Confirm Button is inside the view")
+                else:
+                    print("Confirm Button is not inside the view")
+                    
                 await parent.original_interaction.edit_original_response(embed=embed,view=view) # Updates the message
                 await interaction.response.defer()
             
