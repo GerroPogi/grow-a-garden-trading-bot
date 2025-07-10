@@ -26,9 +26,9 @@ class TradeView(DefaultTradingView):
     @discord.ui.button(label="Create Trade", style=discord.ButtonStyle.primary)
     async def create_trade_callback(self,interaction: discord.Interaction,button: discord.ui.button):
         embed = create_trade_embed(interaction.user.id)
-        await interaction.response.send_message(embed=embed,view=ChooseTrade(interaction),ephemeral=True)
+        await interaction.response.send_message(embed=embed,view=OfferTrade(interaction),ephemeral=True)
 
-class ChooseTrade(DefaultTradingView):
+class OfferTrade(DefaultTradingView):
     def __init__(self, original_interaction):
         super().__init__(timeout=None)
         self.original_interaction = original_interaction
@@ -46,7 +46,7 @@ class ChooseTrade(DefaultTradingView):
         view=PetsTradeView(self.original_interaction)
         view.setup()
         
-        await self.original_interaction.edit_original_response(embed=embed,view=view)
+        await self.edit_message(embed=embed,view=view)
         
         await interaction.response.defer()
     @discord.ui.button(label="Fruits",style=discord.ButtonStyle.primary)
@@ -62,7 +62,7 @@ class ChooseTrade(DefaultTradingView):
         view = FruitsTradeView(self.original_interaction)
         await view.setup()
         
-        await self.original_interaction.edit_original_response(embed=embed,view=view)
+        await self.edit_message(embed=embed,view=view)
         
         await interaction.response.defer()
     @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
@@ -78,9 +78,79 @@ class ChooseTrade(DefaultTradingView):
         view= GearsTradeView(self.original_interaction,self)
         await view.setup()
         
+        await self.edit_message(embed=embed,view=view)
+        
+        await interaction.response.defer()
+    
+    @discord.ui.button(label="Next",style=discord.ButtonStyle.primary)
+    async def next_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        
+        embed= discord.Embed(
+            title="Request your Trade!",
+            description="What do you want in exchange for your treasure?",
+            color = discord.Color.blue()
+        )
+        
+        view = RequestTrade(self.original_interaction)
         await self.original_interaction.edit_original_response(embed=embed,view=view)
         
         await interaction.response.defer()
+
+class RequestTrade(DefaultTradingView):
+    def __init__(self, original_interaction):
+        super().__init__(timeout=None)
+        self.original_interaction = original_interaction
+    
+    @discord.ui.button(label="Pets",style=discord.ButtonStyle.primary)
+    async def pets_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        from .trades.pets import PetsTradeView
+
+        embed = discord.Embed(
+            title="Trade a Pet!",
+            description="Choose a pet you want. Age is not counted in the selection so pick as many as you want!",
+            color=discord.Color.red()
+        )
+        
+        view=PetsTradeView(self.original_interaction, self, False)
+        view.setup()
+        
+        await self.edit_message(embed=embed,view=view)
+        
+        await interaction.response.defer()
+    @discord.ui.button(label="Fruits",style=discord.ButtonStyle.primary)
+    async def fruits_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        
+        from .trades.fruits import FruitsTradeView
+        embed = discord.Embed(
+            title="Trade a Fruit!",
+            description="Choose a fruit you want.",
+            color=discord.Color.red()
+        )
+        
+        view = FruitsTradeView(self.original_interaction, self,False)
+        await view.setup()
+        
+        await self.edit_message(embed=embed,view=view)
+        
+        await interaction.response.defer()
+    @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
+    async def gears_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        
+        from .trades.gears import GearsTradeView
+        embed = discord.Embed(
+            title="Trade a Gear!",
+            description="Choose a gear you want.",
+            color=discord.Color.red()
+        )
+        
+        view= GearsTradeView(self.original_interaction,self, False)
+        await view.setup()
+        
+        await self.edit_message(embed=embed,view=view)
+        
+        await interaction.response.defer()
+    
+
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified
     ex. trade UI + embed, just put it in location
@@ -118,7 +188,7 @@ class GoBackTradeButton(discord.ui.Button):
             await interaction.response.defer()
 
 
-trades_queue={}
+trades_queue={} # This is for holding all the trades
 
 def add_trade(user_id, trade, offer=False):
     global trades_queue
@@ -187,13 +257,15 @@ def create_trade_embed(user_id):
         value="Ex. Master Sprinkler, Sweet Soaker Sprinkler, Lightning Rod",
         inline=True
     )
+    print("trades_queue",trades_queue)
+    print("creating offer")
     offer_content=""
-    if (trades:=trades_queue.get(user_id,{}).get("offer",{})):
-        for key, values in trades.items():
+    if (offer:=trades_queue.get(user_id,{}).get("offer",{})): # I did the most of the work so apologies gang 🥀🥀
+        for key, values in offer.items():
             if key=="fruit":
                 offer_content+=f"{key.capitalize()}s:\n"
-                print(trades,"trades")  
-                for fruit,mutations in trades[key].items():
+                print(offer,"trades")  
+                for fruit,mutations in offer[key].items():
                     offer_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
                     for type, mutations in values[fruit].items():
                         offer_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
@@ -213,6 +285,36 @@ def create_trade_embed(user_id):
         value=offer_content,
         inline=True
     )
+    print("done creating offer")
+    
+    print("creating request")
+    
+    request_content=""
+    if (request:=trades_queue.get(user_id,{}).get("request",{})):
+        for key, values in request.items():
+            if key=="fruit":
+                request_content+=f"{key.capitalize()}s:\n"
+                for fruit,mutations in request[key].items():
+                    request_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
+                    for type, mutations in values[fruit].items():
+                        request_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
+                        for mutation in mutations:
+                            request_content+=f"- {mutation.capitalize()}\n" # Mutations
+                    request_content+="\n"
+            else:
+                request_content+=f"{key.capitalize()}:\n"
+                for value in values:
+                    request_content+=f"- {value.capitalize()}\n"
+            request_content+="\n"
+    else:
+        request_content="No request yet."
+    embed.add_field(
+        name="Current request:",
+        value=request_content,
+        inline=True
+    )
+    print("done creating request")
+    
     # print(trades_queue,"trades_queue") # used it for debugging
     return embed
 

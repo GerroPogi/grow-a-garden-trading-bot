@@ -25,9 +25,9 @@ This bot is designed to make **Grow a Garden** trading **10× faster and safer**
 - [ ] Allow multiple item offers (multi-offer UI)
 
 ### 🔐 Interaction Handling
-- [ ] Prevent "interaction failed" messages (defer or auto-respond)
-- [ ] Preserve `original_interaction` across multi-step views
-- [ ] Make trade UI persistent after restarts (`timeout=None`, `add_view()` on startup)
+- [x] Prevent "interaction failed" messages (defer or auto-respond)
+- [x] Preserve `original_interaction` across multi-step views
+- [x] Make trade UI persistent after restarts (`timeout=None`, `add_view()` on startup)
 
 ### 🔄 Smart Trade Flow
 - [ ] Auto-generate trade summaries with calculated value

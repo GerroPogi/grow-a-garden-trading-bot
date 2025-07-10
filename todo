@@ -13,15 +13,16 @@
 ## In Progress
 
 - [ ] Player create a trade
-- [ ] Player select a gear
-- [ ] Add a fix for trading_queue var for trades
-- [ ] Player select a fruit
+
 - [ ] Player request for something
 
 ## Completed
 
 - [x] Add updated data about the fruits, mutations, pets, and gears
 - [x] add prices to fruits
+- [x] Player select a gear
+- [x] Add a fix for trading_queue var for trades
+- [x] Player select a fruit
 
 ## Notes
 

@@ -10,11 +10,12 @@ class ConfirmButton(discord.ui.Button):
         self.original_view=view
         self.interaction = interaction
         self.call_back=callback
+        self.kwargs=kwargs
         super().__init__(label="Confirm Choice", style=discord.ButtonStyle.green)
     
     async def callback(self, interaction:discord.Interaction):
         await interaction.response.defer()
-        await self.call_back(self.interaction,self.original_view)
+        await self.call_back(self.interaction,self.original_view,**self.kwargs)
         
     
 class NextButton(discord.ui.Button):

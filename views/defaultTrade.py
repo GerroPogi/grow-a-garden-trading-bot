@@ -7,7 +7,7 @@ class DefaultTradingView(discord.ui.View):
     original_interaction: discord.Interaction
     def set_original_interaction(self,interaction:discord.Interaction):
         self.original_interaction=interaction
-    async def edit_message(self,*,content="",embed=None,view=None):
+    async def edit_message(self,*,content="",embed=None,view=None,**kwargs):
         message = await self.original_interaction.original_response()
         
         embed = embed or message.embeds[0]
@@ -15,4 +15,4 @@ class DefaultTradingView(discord.ui.View):
         view = view or message.components
         
         content = content or message.content
-        self.original_interaction.edit_original_response(content=content,embed=embed,view=view)
+        await self.original_interaction.edit_original_response(content=content,embed=embed,view=view,**kwargs)

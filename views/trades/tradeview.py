@@ -42,7 +42,8 @@ class TradeView(ButtonPageView):
             },
         list_of_items: list[discord.ui.Item] = [],
         confirm_callback: Callable[[discord.Interaction, discord.ui.View], None] = None,
-        homeView: discord.ui.View = discord.ui.View()
+        homeView: discord.ui.View = discord.ui.View(),
+        offer:bool=True
         ):
         
         """
@@ -59,11 +60,13 @@ class TradeView(ButtonPageView):
             list_of_items (list[discord.ui.Item], optional): Custom Items to be added to the view. Defaults to [].
             confirm_callback (Callable[[discord.Interaction, discord.ui.View]], None): A callback to be called when the confirm button is clicked. Defaults to None.
             homeView (discord.ui.View): It is the view where TradeView was initialized so that it can return when the user goes back
+            offer (bool): To say that this is an offer
         """
         self.message = message
         self.original_interaction = original_interaction
         self.category_format = category_format
         self.trade_dict = trade_dict
+        self.offer=offer
         items=[]
         self.list_of_items=list_of_items
         self.confirm_callback:callable[discord.Interaction,discord.ui.View]=confirm_callback
@@ -154,10 +157,11 @@ class TradeView(ButtonPageView):
                     print("Go back Trade Button is not inside the view")
                     
                 if len(view.children)<5: # Still has space for Confirm Button (also including Go back Button or maybe not)
-                    view.add_item(ConfirmButton(parent.confirm_callback,parent.original_interaction,view))
+                    view.add_item(ConfirmButton(parent.confirm_callback,parent.original_interaction,view,offer=parent.offer))
                     print("Confirm Button is inside the view")
                 else:
                     print("Confirm Button is not inside the view")
+                    # TODO: Make it so that it goes to the next page when there is NO CONFIRM BUTTON
                     
                 await parent.original_interaction.edit_original_response(embed=embed,view=view) # Updates the message
                 await interaction.response.defer()
