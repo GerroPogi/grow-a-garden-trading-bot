@@ -18,7 +18,7 @@ from discord import app_commands
 # Class to start it all
 
 class TradeView(DefaultTradingView):
-    """This view is before initiating a trade.
+    """This view is before initiating a trade. Aka the button
     """
     def __init__(self):
         super().__init__(timeout=None)
@@ -42,32 +42,44 @@ class ChooseTrade(DefaultTradingView):
             description="Choose a pet you're willing to trade. Age is not counted in the selection so pick as many as you want!",
             color=discord.Color.red()
         )
-        print("skibidi")
-        await self.original_interaction.edit_original_response(embed=embed,view=PetsTradeView(self.original_interaction))
+        
+        view=PetsTradeView(self.original_interaction)
+        view.setup()
+        
+        await self.original_interaction.edit_original_response(embed=embed,view=view)
+        
         await interaction.response.defer()
     @discord.ui.button(label="Fruits",style=discord.ButtonStyle.primary)
     async def fruits_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        
         from .trades.fruits import FruitsTradeView
         embed = discord.Embed(
             title="Trade a Fruit!",
             description="Choose a fruit you're willing to trade.",
             color=discord.Color.red()
         )
+        
         view = FruitsTradeView(self.original_interaction)
         await view.setup()
+        
         await self.original_interaction.edit_original_response(embed=embed,view=view)
+        
         await interaction.response.defer()
     @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
     async def gears_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        
         from .trades.gears import GearsTradeView
         embed = discord.Embed(
             title="Trade a Gear!",
             description="Choose a gear you're willing to trade.",
             color=discord.Color.red()
         )
+        
         view= GearsTradeView(self.original_interaction,self)
         await view.setup()
+        
         await self.original_interaction.edit_original_response(embed=embed,view=view)
+        
         await interaction.response.defer()
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified
@@ -156,7 +168,7 @@ def create_trade_embed(user_id):
     """
     
     embed = discord.Embed(
-            title="Create a Trade! Skibidi",
+            title="Create a Trade!",
             description="Let's create a trade. What are you willing to trading for?",
             color=discord.Color.blue()
         )

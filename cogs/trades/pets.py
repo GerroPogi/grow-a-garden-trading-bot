@@ -1,6 +1,8 @@
 import asyncio
 import discord
-from ..trade import TradeView, add_trade, create_trade_embed, DefaultTradingView, GoBackTradeButton, ChooseTrade
+
+from views.trades.offer import TradeView
+from ..trade import add_trade, create_trade_embed, DefaultTradingView, GoBackTradeButton, ChooseTrade
 
 from ._items import pets
 
