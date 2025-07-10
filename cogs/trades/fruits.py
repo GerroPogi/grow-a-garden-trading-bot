@@ -66,7 +66,7 @@ async def add_fruits(interaction: discord.Interaction,view:discord.ui.View, offe
     growthMutation = mutations[0].values
     environmentMutation = mutations[1].values + mutations[2].values
     
-    if not growthMutation or not environmentMutation:
+    if not growthMutation or not environmentMutation: # TODO: Add rules to mutations accoridng to https://growagarden.fandom.com/wiki/Mutations
         await invalid_choice(interaction,"Please select a mutation.",view)
         return
     fruit={

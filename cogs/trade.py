@@ -84,7 +84,7 @@ class OfferTrade(DefaultTradingView):
     
     @discord.ui.button(label="Next",style=discord.ButtonStyle.primary)
     async def next_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        
+        # TODO: Add checking system if there is offer before going to the next view
         embed= create_trade_embed(interaction.user.id,False)
         
         view = RequestTrade(self.original_interaction)
