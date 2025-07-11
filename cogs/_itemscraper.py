@@ -5,94 +5,164 @@ DO NOT MAKE MY LIFE HARD BY MANUALLY TYPING PRICES THIS IS NOT FUN.
 
 # Of course made by yours truly, Chatgpt
 
-import json
+import json # for formatting
 import requests
 from bs4 import BeautifulSoup
-import urllib.parse
-import time
 
 base_url = "https://growagarden.fandom.com/wiki/"
 
-# All fruit names (flattened from dictionary)
-fruits = {
-    "common": {
-        "carrot": {"weight": 0.28, "price": 20},
-        "strawberry": {"weight": 0.3, "price": 20},
-        "chocolate carrot": {"weight": 0.28, "price": 11000},
-        "pink tulip": {"weight": 0.05, "price": 850}
-    },
-    "uncommon": [
-        "blueberry", "wild carrot", "rose", "orange tulip", "red lollipop",
-        "nightshade", "manuka flower", "lavender", "crocus"
-    ],
-    "rare": [
-        "tomato", "cauliflower", "delphinium", "peace lily", "pear", "raspberry",
-        "corn", "daffodil", "candy sunflower", "mint", "glowshroom", "dandelion",
-        "nectarshade", "foxglove", "succulent", "bee balm"
-    ],
-    "legendary": [
-        "watermelon", "pumpkin", "banana", "aloe vera", "avocado", "cantaloupe",
-        "rafflesia", "green apple", "bamboo", "cranberry", "durian", "moonflower",
-        "starfruit", "papaya", "lilac", "lumira", "violet corn", "nectar thorn"
-    ],
-    "mythical": [
-        "peach", "pineapple", "moon melon", "celestiberry", "kiwi", "guanabana",
-        "bell pepper", "prickly pear", "parasol flower", "cactus", "lily of the valley",
-        "dragon fruit", "easter egg", "moon mango", "mango", "coconut", "blood banana",
-        "moonglow", "eggplant", "passionfruit", "lemon", "honeysuckle", "nectarine",
-        "pink lily", "purple dahlia", "bendboo", "cocovine", "ice cream bean", "lime"
-    ],
-    "divine": [
-        "loquat", "feijoa", "pitcher plant", "traveler's fruit", "rosy delight", "pepper",
-        "cacao", "grape", "mushroom", "cherry blossom", "crimson vine", "candy blossom",
-        "lotus", "venus fly trap", "cursed fruit", "soul fruit", "mega mushroom",
-        "moon blossom", "hive fruit", "sunflower", "dragon pepper"
-    ],
-    "prismatic": [
-        "sugar apple", "ember lily", "elephant ears", "beanstalk"
-    ],
-    "unknown": [
-        "noble flower", "blue lollipop", "burning bud", "purple cabbage"
-    ]
-}
-
-
-
-def get_fruit_data(fruit):
-    url = base_url + fruit.title().replace(" ", "_")
+def get_pets():
+    url="https://growagarden.fandom.com/wiki/Pets"
     try:
         res = requests.get(url, timeout=10)
         res.raise_for_status()
     except Exception as e:
-        return f"[ERROR] {fruit}: {e}"
+        return f"[ERROR]: {e}"
 
     soup = BeautifulSoup(res.text, 'html.parser')
-    group_section = soup.find("section", class_="pi-item pi-group pi-border-color")
-    if not group_section:
-        return f"[SKIP] {fruit}: No info box found."
+    tables=soup.find_all("div", class_="tabber wds-tabber")[:2]
+    pets={}
     
-
-    value_element = group_section.find(attrs={"data-source": "base_value"})
-    weight_element = group_section.find(attrs={"data-source": "base_weight"})
-
-    base_value = float(value_element.get_text(strip=True).replace("Base Value","").replace("~","").replace(",","")) if value_element else "N/A"
+    for table in tables:
+        categories=[category.text for category in table.find_all("div", class_="wds-tabs__tab-label")]
+        
+        # Pets seperated by category
+        pet_names=sorted([name.find("a").text for name in table.find_all("div",class_="lightbox-caption")])
+        
+        for category in categories:
+            pets[category.lower()] = [pet.lower() for pet in pet_names]
     
-    # mfs in wiki adding random ahh characters
-    base_weight = float(weight_element.get_text(strip=True).replace("Base Weight","").replace("kg","").replace("~","").replace(" ","").replace("(estimate)","")) if weight_element else "N/A"
+    return pets
 
-    return {"weight":base_weight,"price":base_value}
+def get_mutations():
+    url="https://growagarden.fandom.com/wiki/Mutations"
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+    except Exception as e:
+        print(f"[ERROR]: {e}")
+        return {}
+    soup = BeautifulSoup(res.text, 'html.parser')
+    tables=soup.find_all("table", class_="wikitable")[:2]
+    
+    mutations={
+        "growth":{ # Default mutations
+                "none":1,
+                "ripe": 1,
+                "gold": 20,
+                "rainbow": 50
+            },
+        "environment":{}
+    }
+    
+    # Standard
+    for table in tables:
+        for row in table.find_all("tr"):
+            cells = row.find_all("td")
+            # print(cells)
+            if len(cells) == 5 and not "Name" in cells[0].text: # Checks if its a valid row that has mutations
+                mutation = cells[0].text.strip().lower()
+                multiplier = int(cells[2].text.replace("x","").replace("×","").strip()) # Fuck you, the guy who added that "×"
+                mutations["environment"][mutation] = multiplier
+    return mutations
 
-new_fruits={}
+def get_fruit_data():
+    url = "https://growagarden.fandom.com/wiki/Crops"
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+    except Exception as e:
+        return f"[ERROR]: {e}"
+    soup = BeautifulSoup(res.text, 'html.parser')
+    tables=soup.find_all("div", class_="tabber wds-tabber")[:2]
+    
+    fruit_names_dict={}
+    
+    for table in tables:
+        categories=table.find_all("div", class_="wds-tabs__tab-label")
+        
+        # Fruits seperated by category
+        fruit_categories=table.find_all("div",class_="wikia-gallery wikia-gallery-caption-below wikia-gallery-position-left wikia-gallery-spacing-medium wikia-gallery-border-none wikia-gallery-captions-center wikia-gallery-caption-size-medium")
+        
+        for category, fruit_category in zip(categories,fruit_categories):
+            category_name = category.find("a").text.lower()
+            fruit_names_dict[category_name] = fruit_names_dict.get(category_name,{})
+            
+            fruit_links = [div.find("a")["href"] for div in fruit_category.find_all("div",class_="lightbox-caption")]
+            fruit_names = [div.find("a").text.lower() for div in fruit_category.find_all("div",class_="lightbox-caption")]
+            
+            fruit=sorted(zip(fruit_names,fruit_links))
+            
+            for fruit_name, fruit_link in fruit:
+                base_value=0
+                base_weight=0
+                print("[DEBUG] Searching for: ", fruit_name)
+                url= f"https://growagarden.fandom.com{fruit_link}"
+                try:
+                    res = requests.get(url, timeout=10)
+                    res.raise_for_status()
+                except Exception as e:
+                    print(f"[ERROR]: {e}")
+                    print(f"Skipping {fruit_name} in {category_name}...")
+                    continue
+                
+                fruit_soup=BeautifulSoup(res.text, 'html.parser')
+                table= fruit_soup.find("section",class_="pi-item pi-group pi-border-color") # Finds the table that holds all the values
+                
+                base_value_element= table.find(attrs={"data-source":"base_value"}) # Finds the value element that holds the value
+                base_weight_element = table.find(attrs={"data-source": "base_weight"})
+                try:
+                    base_value = float(
+                        base_value_element
+                        .find("b")
+                        .text
+                        .replace(",","")
+                        )
+                    base_weight = float(
+                        base_weight_element
+                        .find("div",class_="pi-data-value pi-font")
+                        .text
+                        .replace("kg","")
+                        .replace("~","")
+                        .strip()
+                        )
+                except Exception as e:
+                    print(f"[ERROR]: {e}")
+                    print(f"Skipping {fruit_name} in {category_name}...")
+                finally:
+                    fruit_names_dict[category_name][fruit_name]={"value":base_value or "N/A","weight":base_weight or "N/A"}
+    
+    return fruit_names_dict
 
-print("Fetching fruit data from Fandom Wiki...\n")
-for category in fruits:
-    new_fruits[category]={}
-    print("Category: ", category.capitalize())
-    for fruit in fruits[category]:
-        data= get_fruit_data(fruit)
-        new_fruits[category][fruit]=data
-        print("Fruit added: ", fruit.capitalize(),data)
+def get_gears():
+    url="https://growagarden.fandom.com/wiki/Gears"
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+    except Exception as e:
+        return f"[ERROR]: {e}"
 
-# print(get_fruit_data("rafflesia"))
+    soup = BeautifulSoup(res.text, 'html.parser')
+    table=soup.find("div", class_="tabber wds-tabber")
+    gears={}
 
-print(json.dumps(new_fruits,indent=4))
+    categories=[category.text for category in table.find_all("div", class_="wds-tabs__tab-label")]
+    
+    # Gears seperated by category
+    gear_names = [
+        row.find_all("td")[0].text.lower().strip()
+        for wikitable in table.find_all("table", class_="wikitable")
+        for row in wikitable.find_all("tr")[1:]
+        if row.find_all("td")
+    ]
+    
+    for category in categories:
+        gears[category.lower()] = [gear.lower() for gear in gear_names]
+    
+    return gears
+
+if __name__ == "__main__":
+    print(get_pets())
+    print(get_fruit_data())
+    print(get_mutations())
+    print(get_gears())
