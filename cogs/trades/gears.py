@@ -2,7 +2,7 @@ import asyncio
 import discord
 
 from views.trades.tradeview import TradeView
-from ..trade import add_trade, create_trade_embed, GoBackTradeButton, OfferTrade
+from ..trade import add_trade, create_trade_embed, GoBackTradeButton, OfferTrade, RequestTrade
 from ._items import gears
 
 title:str="Trade a Gear!"
@@ -62,7 +62,7 @@ async def add_gear_offer(interaction: discord.Interaction, view: discord.ui.View
     add_trade(user_id,gear_dict,offer=offer)
     
     embed = create_trade_embed(user_id,offer) 
-    await interaction.edit_original_response(view=view,embed=embed)
+    await interaction.edit_original_response(view=OfferTrade(interaction) if offer else RequestTrade(interaction),embed=embed)
     
 # async def add_gear_request() # just an idea for requests
 
@@ -75,6 +75,8 @@ class GearsTradeView(TradeView):
             "description": description_offer if offer else description_request,
             "placeholder": placeholder
         }
+        # TODO Bug that keeps 
+        
         confirm_callback = add_gear_offer
         super().__init__(
             original_interaction=original_interaction,

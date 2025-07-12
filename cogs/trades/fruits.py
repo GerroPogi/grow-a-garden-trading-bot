@@ -1,7 +1,7 @@
 import discord
 
 from views.trades.tradeview import TradeView
-from ..trade import add_trade, create_trade_embed, OfferTrade
+from ..trade import add_trade, create_trade_embed, OfferTrade, RequestTrade
 from ._items import fruits, mutations
 import asyncio
 
@@ -82,7 +82,7 @@ async def add_fruits(interaction: discord.Interaction,view:discord.ui.View, offe
     add_trade(user_id,fruit,offer=offer)
     
     embed = create_trade_embed(user_id,offer) 
-    await interaction.edit_original_response(content="",view=OfferTrade(interaction),embed=embed)
+    await interaction.edit_original_response(content="",view=OfferTrade(interaction) if offer else RequestTrade(interaction),embed=embed)
     
 class FruitGrowthMutationsSelect(discord.ui.Select):
     def __init__(self):

@@ -43,8 +43,8 @@ class OfferTrade(DefaultTradingView):
             color=discord.Color.red()
         )
         
-        view=PetsTradeView(self.original_interaction)
-        view.setup()
+        view=PetsTradeView(self.original_interaction, self)
+        await view.setup()
         
         await self.edit_message(embed=embed,view=view)
         
@@ -59,7 +59,7 @@ class OfferTrade(DefaultTradingView):
             color=discord.Color.red()
         )
         
-        view = FruitsTradeView(self.original_interaction)
+        view = FruitsTradeView(self.original_interaction,self)
         await view.setup()
         
         await self.edit_message(embed=embed,view=view)
@@ -82,7 +82,7 @@ class OfferTrade(DefaultTradingView):
         
         await interaction.response.defer()
     
-    @discord.ui.button(label="Next",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Next",style=discord.ButtonStyle.green)
     async def next_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         # TODO: Add checking system if there is offer before going to the next view
         embed= create_trade_embed(interaction.user.id,False)
@@ -108,7 +108,7 @@ class RequestTrade(DefaultTradingView):
         )
         
         view=PetsTradeView(self.original_interaction, self, False)
-        view.setup()
+        await view.setup()
         
         await self.edit_message(embed=embed,view=view)
         
@@ -149,8 +149,8 @@ class RequestTrade(DefaultTradingView):
     
     @discord.ui.button(label="Confirm Trade",style=discord.ButtonStyle.green)
     async def confirm_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        await interaction.response.defer()
         await self.edit_message(view=None,content="Feature not added yet")
+        await interaction.response.defer()
 
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified

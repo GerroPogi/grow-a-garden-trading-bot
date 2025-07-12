@@ -10,7 +10,7 @@ class TestCog(commands.Cog):
 
     @app_commands.command(name="test", description="A simple test command.")
     async def test_command(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Test command executed successfully! Skibidi")
+        await interaction.response.send_message("Test command executed successfully! Skibidi") # Now lets add something here
     
     async def cog_load(self):
         self.bot.tree.add_command(self.test_command, guild =self.guild)

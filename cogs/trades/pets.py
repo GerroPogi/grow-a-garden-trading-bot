@@ -6,9 +6,9 @@ from ..trade import add_trade, create_trade_embed, GoBackTradeButton, OfferTrade
 
 from ._items import pets
 
-title:str = "Trade a Pet!",
-description_offer:str = "Choose a pet you're willing to trade.",
-description_request:str = "Choose a pet you want.",
+title:str = "Trade a Pet!"
+description_offer:str = "Choose a pet you're willing to trade."
+description_request:str = "Choose a pet you want."
 placeholder: str = "Select a pet"
 async def invalid_choice(interaction:discord.Interaction,reason:str,original_view:discord.ui.View, offer: bool = True):
     
@@ -59,8 +59,7 @@ async def add_pets_offer(interaction: discord.Interaction, view: discord.ui.View
         
         embed = create_trade_embed(user_id,offer) 
         
-        await interaction.edit_original_response(content="",view=OfferTrade(interaction),embed=embed)
-        await interaction.response.defer()
+        await interaction.edit_original_response(content="",view=OfferTrade(interaction) if offer else RequestTrade(interaction),embed=embed)
 
 class PetsTradeView(TradeView):
     def __init__(self, original_interaction: discord.Interaction, homeView: discord.ui.View, offer:bool = True):

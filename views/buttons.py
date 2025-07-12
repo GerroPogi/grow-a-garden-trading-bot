@@ -42,5 +42,5 @@ class BackButton(discord.ui.Button):
             self.goBackFunction(interaction)
         if self.backFunction and checkIfAsync(self.backFunction):
             await self.backFunction(interaction)
-        else:
+        elif self.backFunction:
             self.backFunction(interaction)
