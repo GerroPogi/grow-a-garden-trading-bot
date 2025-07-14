@@ -40,6 +40,24 @@ async def invalid_choice(original_interaction:discord.Interaction,reason:str,ori
         view=original_view
     )
 
+mutations_rules = {
+    "Paradisal and verdant fruits cannot exist together.": ["paradisal", "verdant"],
+    "Paradisal and sundried fruits cannot exist together.": ["paradisal", "sundried"],
+    "Cooked and burnt fruits cannot exist together.": ["cooked", "burnt"],
+    "Ceramic and clay fruits cannot exist together.": ["ceramic", "clay"],
+    "Ceramic and burnt fruits cannot exist together.": ["ceramic", "burnt"],
+    "Drenched and wet fruits cannot exist together.": ["drenched", "wet"],
+    "Tempestuous and windstruck fruits cannot exist together.": ["tempestuous", "windstruck"],
+    "Tempestuous and twisted fruits cannot exist together.": ["tempestuous", "twisted"]
+}
+
+def check_mutations_rules(mutations: list[str]): # Only environment mutations according to https://growagarden.fandom.com/wiki/Crop_Mutations
+    # This just checks out the rules and gives the reasons why
+    for reason, illegal_mutations in mutations_rules.items():
+        if illegal_mutations[0] in mutations and illegal_mutations[1] in mutations:
+            return False, reason
+    return True, "No problems found."
+
 async def add_fruits(original_interaction: discord.Interaction,view:discord.ui.View, offer: bool = True):
     user_id= original_interaction.user.id
     
@@ -70,9 +88,16 @@ async def add_fruits(original_interaction: discord.Interaction,view:discord.ui.V
     growthMutation = mutations[0].values
     environmentMutation = mutations[1].values + mutations[2].values
     
-    if not growthMutation or not environmentMutation: # TODO: Add rules to mutations accoridng to https://growagarden.fandom.com/wiki/Mutations
+    
+    if not growthMutation or not environmentMutation:
         await invalid_choice(original_interaction,"Please select a mutation.",view)
         return
+    
+    valid = check_mutations_rules(environmentMutation)
+    if not valid[0]:
+        await invalid_choice(original_interaction,valid[1],view)
+        return
+    
     fruit={
         "fruit":{
             name:

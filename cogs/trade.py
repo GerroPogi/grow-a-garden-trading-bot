@@ -33,7 +33,7 @@ class OfferTrade(DefaultTradingView):
         super().__init__(timeout=None)
         self.original_interaction = original_interaction
     
-    @discord.ui.button(label="Pets",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Pets",style=discord.ButtonStyle.secondary)
     async def pets_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         from .trades.pets import PetsTradeView
 
@@ -49,7 +49,7 @@ class OfferTrade(DefaultTradingView):
         await self.edit_message(embed=embed,view=view)
         
         await interaction.response.defer()
-    @discord.ui.button(label="Fruits",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Fruits",style=discord.ButtonStyle.secondary)
     async def fruits_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         
         from .trades.fruits import FruitsTradeView
@@ -65,7 +65,7 @@ class OfferTrade(DefaultTradingView):
         await self.edit_message(embed=embed,view=view)
         
         await interaction.response.defer()
-    @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Gears",style=discord.ButtonStyle.secondary)
     async def gears_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         
         from .trades.gears import GearsTradeView
@@ -97,7 +97,7 @@ class RequestTrade(DefaultTradingView):
         super().__init__(timeout=None)
         self.original_interaction = original_interaction
     
-    @discord.ui.button(label="Pets",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Pets",style=discord.ButtonStyle.secondary)
     async def pets_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         from .trades.pets import PetsTradeView
 
@@ -113,7 +113,7 @@ class RequestTrade(DefaultTradingView):
         await self.edit_message(embed=embed,view=view)
         
         await interaction.response.defer()
-    @discord.ui.button(label="Fruits",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Fruits",style=discord.ButtonStyle.secondary)
     async def fruits_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         
         from .trades.fruits import FruitsTradeView
@@ -129,7 +129,7 @@ class RequestTrade(DefaultTradingView):
         await self.edit_message(embed=embed,view=view)
         
         await interaction.response.defer()
-    @discord.ui.button(label="Gears",style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Gears",style=discord.ButtonStyle.secondary)
     async def gears_callback(self,interaction:discord.Interaction, button: discord.ui.button):
         
         from .trades.gears import GearsTradeView
