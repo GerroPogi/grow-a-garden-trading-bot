@@ -6,6 +6,7 @@ Ts is for handling the trading. The UI and allat.
 
 """
 
+import asyncio
 import discord
 # from .trades._items import pets, gears, fruits, mutations # remove the dot when debugging cuz discord.py is the shit
 from discord.ext import commands
@@ -84,13 +85,39 @@ class OfferTrade(DefaultTradingView):
     
     @discord.ui.button(label="Next",style=discord.ButtonStyle.green)
     async def next_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        # TODO: Add checking system if there is offer before going to the next view
+        if not trades_queue.get(interaction.user.id,{}).get("offer",{}):
+            await self.invalid_next()
+            # await interaction.response.defer()
+            return
+        
         embed= create_trade_embed(interaction.user.id,False)
         
         view = RequestTrade(self.original_interaction)
         await self.original_interaction.edit_original_response(embed=embed,view=view)
         
         await interaction.response.defer()
+    
+    async def invalid_next(self):
+        
+        # Scolding lesson
+        description="You have not selected a trade to request. Please select a trade to request. "
+        embed=discord.Embed(
+            title="Invalid Trade",
+            description=description+"Restarting in 5 seconds",
+        )
+        await self.original_interaction.edit_original_response(embed=embed,view=discord.ui.View())
+        
+        await asyncio.sleep(1)
+        for i in range(4,0,-1):
+            embed.description=description+"Restarting in "+str(i)+" seconds"
+            await self.original_interaction.edit_original_response(embed=embed,view=discord.ui.View())
+            await asyncio.sleep(1)
+        
+        # Return back
+        embed= create_trade_embed(self.original_interaction.user.id)
+        view = OfferTrade(self.original_interaction)
+        await self.original_interaction.edit_original_response(embed=embed,view=view)
+        
 
 class RequestTrade(DefaultTradingView):
     def __init__(self, original_interaction):
