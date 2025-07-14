@@ -10,7 +10,7 @@ description_offer:str="Choose a fruit you're willing to trade."
 description_request:str="Choose a fruit you want."
 placeholder: str = "Select a fruit"
 
-async def invalid_choice(interaction:discord.Interaction,reason:str,original_view:discord.ui.View, offer: bool = True):
+async def invalid_choice(original_interaction:discord.Interaction,reason:str,original_view:discord.ui.View, offer: bool = True):
     old_embed = discord.Embed(
         title=title,
         description=description_offer if offer else description_request,
@@ -22,7 +22,7 @@ async def invalid_choice(interaction:discord.Interaction,reason:str,original_vie
     )
     feedback.description=reason+" Restarting in 5 seconds..."
     
-    await interaction.edit_original_response(
+    await original_interaction.edit_original_response(
         embed=feedback,
         view=discord.ui.View()
     )
@@ -30,34 +30,38 @@ async def invalid_choice(interaction:discord.Interaction,reason:str,original_vie
     for i in range(4,0,-1):
         
         feedback.description=reason+" Restarting in "+str(i)+" seconds..."
-        await interaction.edit_original_response(
+        await original_interaction.edit_original_response(
             embed=feedback,
         )
         await asyncio.sleep(1)
         
-    await interaction.edit_original_response(
+    await original_interaction.edit_original_response(
         embed=old_embed,
         view=original_view
     )
 
-async def add_fruits(interaction: discord.Interaction,view:discord.ui.View, offer: bool = True):
-    user_id= interaction.user.id
+async def add_fruits(original_interaction: discord.Interaction,view:discord.ui.View, offer: bool = True):
+    user_id= original_interaction.user.id
     
     # 4 selects mode (When there is only 1 fruit select object):
     if isinstance(view.children[1],FruitGrowthMutationsSelect):
         mutations=[view.children[1],view.children[2],view.children[3]]
         
         if not view.children[0].values:
-            await invalid_choice(interaction,"Please select a fruit.",view)
+            await invalid_choice(original_interaction,"Please select a fruit.",view,offer)
             return
         
         name=view.children[0].values[0]
         
     else: # 5 selects mode (When there is more than 1 fruit select object because discord can only handle 25):
         if not (view.children[0].values or view.children[1].values):
-            await invalid_choice(interaction,"Please select a fruit.",view)
+            await invalid_choice(original_interaction,"Please select a fruit.",view,offer)
             return
-        name=(view.children[0].values or view.children[1].values)[0]
+        name=(view.children[0].values +view.children[1].values)
+        if len(name)>1:
+            await invalid_choice(original_interaction,"Please select only 1 fruit.",view,offer=offer)
+            return
+        name=name[0]
         mutations=[view.children[2],view.children[3],view.children[4]]
     
     
@@ -67,7 +71,7 @@ async def add_fruits(interaction: discord.Interaction,view:discord.ui.View, offe
     environmentMutation = mutations[1].values + mutations[2].values
     
     if not growthMutation or not environmentMutation: # TODO: Add rules to mutations accoridng to https://growagarden.fandom.com/wiki/Mutations
-        await invalid_choice(interaction,"Please select a mutation.",view)
+        await invalid_choice(original_interaction,"Please select a mutation.",view)
         return
     fruit={
         "fruit":{
@@ -82,7 +86,7 @@ async def add_fruits(interaction: discord.Interaction,view:discord.ui.View, offe
     add_trade(user_id,fruit,offer=offer)
     
     embed = create_trade_embed(user_id,offer) 
-    await interaction.edit_original_response(content="",view=OfferTrade(interaction) if offer else RequestTrade(interaction),embed=embed)
+    await original_interaction.edit_original_response(content="",view=OfferTrade(original_interaction) if offer else RequestTrade(original_interaction),embed=embed)
     
 class FruitGrowthMutationsSelect(discord.ui.Select):
     def __init__(self):

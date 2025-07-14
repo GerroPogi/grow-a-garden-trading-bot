@@ -76,6 +76,7 @@ class GearsTradeView(TradeView):
             "placeholder": placeholder
         }
         # TODO Bug that keeps 
+        # Keeps what????
         
         confirm_callback = add_gear_offer
         super().__init__(

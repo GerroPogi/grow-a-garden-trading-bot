@@ -183,6 +183,6 @@ def get_gears():
 
 if __name__ == "__main__":
     print(prettify(get_gears()))
-    # print(get_fruit_data())
-    # print(get_mutations())
-    # print(get_gears())
+    print(prettify(get_fruit_data()))
+    print(prettify(get_mutations()))
+    print(prettify(get_gears()))

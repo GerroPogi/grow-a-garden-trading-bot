@@ -163,10 +163,17 @@ class TradeView(ButtonPageView):
                     print("Confirm Button is inside the view")
                 else:
                     print("Confirm Button is not inside the view")
-                    # TODO: Make it so that it goes to the next page when there is NO CONFIRM BUTTON
+                    # When there is no more space, it will just be the last resort. It will replace the last item callback with the confirm_callback formatted in Confirm Button fashion
+                    view.children[4].callback = parent.last_resort_callback(view) 
                     
                 await parent.original_interaction.edit_original_response(embed=embed,view=view) # Updates the message
                 await interaction.response.defer()
             
         return ButtonCategory()
     
+    def last_resort_callback(self, view):
+        async def callback(interaction: discord.Interaction):
+            if self.confirm_callback:
+                await self.confirm_callback(self.original_interaction, view)
+            await interaction.response.defer()
+        return callback
