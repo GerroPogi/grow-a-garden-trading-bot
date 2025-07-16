@@ -131,7 +131,6 @@ class FruitGrowthMutationsSelect(discord.ui.Select):
 class FruitEnvironmentMutationsSelect(discord.ui.Select):
     def __init__(self,lower_half:bool):
         mutationsList=list(mutations["environment"].keys())
-        print(len(mutationsList),"Mutations lenght")
         if lower_half:
             selected_keys=mutationsList[:24]
         else:

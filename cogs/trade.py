@@ -7,9 +7,10 @@ Ts is for handling the trading. The UI and allat.
 """
 
 import asyncio
+from asyncio import Queue
 import discord
 # from .trades._items import pets, gears, fruits, mutations # remove the dot when debugging cuz discord.py is the shit
-from discord.ext import commands
+from discord.ext import commands, tasks
 from views import DefaultTradingView
 
 # from trades.pets import PetsTradeView
@@ -85,7 +86,7 @@ class OfferTrade(DefaultTradingView):
     
     @discord.ui.button(label="Next",style=discord.ButtonStyle.green)
     async def next_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        if not trades_queue.get(interaction.user.id,{}).get("offer",{}):
+        if not trades_queue.get(interaction.user.id,[{}])[-1].get("offer",{}):
             await self.invalid_next()
             # await interaction.response.defer()
             return
@@ -118,6 +119,12 @@ class OfferTrade(DefaultTradingView):
         view = OfferTrade(self.original_interaction)
         await self.original_interaction.edit_original_response(embed=embed,view=view)
         
+    @discord.ui.button(label="Debug",style=discord.ButtonStyle.red)
+    async def debug_callback(self,interaction:discord.Interaction, button: discord.ui.button):
+        add_trade(interaction.user.id, {"pets":["Crab"]})
+        add_trade(interaction.user.id, {"pets":["Crab"]},True)
+        finish_trade(interaction.user.id)
+        await interaction.response.defer()
 
 class RequestTrade(DefaultTradingView):
     def __init__(self, original_interaction):
@@ -176,8 +183,10 @@ class RequestTrade(DefaultTradingView):
     
     @discord.ui.button(label="Confirm Trade",style=discord.ButtonStyle.green)
     async def confirm_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        await self.edit_message(view=None,content="Feature not added yet")
+        finish_trade(interaction.user.id) # TODO Stop the trade when nothing for requests
         await interaction.response.defer()
+    
+    
 
 class GoBackTradeButton(discord.ui.Button):
     """A button UI that uses the args location so that it can revert back to the location it specified
@@ -218,41 +227,44 @@ class GoBackTradeButton(discord.ui.Button):
 
 trades_queue={} # This is for holding all the trades
 
-def add_trade(user_id, trade, offer=False):
+def add_trade(user_id: int, trade: dict, offer: bool = False) -> None:
+    """
+    Adds a trade to the trades_queue dictionary.
+
+    Args:
+    user_id (int): The ID of the user making the trade.
+    trade (dict): The trade details.
+    offer (bool): Whether the trade is an offer or a request. Defaults to False.
+    """
     global trades_queue
+
     side = "offer" if offer else "request"
-    
-    # Ensure user entry exists
-    trades_queue[user_id] = trades_queue.get(user_id, {})
-    
-    # Ensure offer/request section exists
-    trades_queue[user_id][side] = trades_queue[user_id].get(side, {})
+    trades_queue.setdefault(user_id, [{}])
 
-    # Add each item category (like 'pets', 'fruits') to the trade
-    for category in trade.keys():
-        
-        if isinstance(trade[category], list):
-            trades_queue[user_id][side].setdefault(category, [])
-            trades_queue[user_id][side][category].extend(trade[category])
-        
-        if isinstance(trade[category], dict):
-            for key, value in trade[category].items():
-                # Get current dict we're adding on
-                target_dict = trades_queue[user_id][side].setdefault(category, {})
-                print(target_dict,"target dict")
+    if not trades_queue[user_id][-1].get(side):
+        trades_queue[user_id][-1][side] = {}
 
-                # If key doesn't exist yet, just add it
-                if key not in target_dict:
-                    target_dict[key] = value
-                else:
-                    # Generate a unique key based on count of existing keys with same base
-                    suffix = 1
+    for category, value in trade.items():
+        if isinstance(value, list):
+            trades_queue[user_id][-1][side].setdefault(category, []).extend(value)
+        elif isinstance(value, dict):
+            for key, val in value.items():
+                new_key = key
+                suffix = 1
+                while new_key in trades_queue[user_id][-1][side].get(category, {}):
                     new_key = f"{key}{suffix}"
-                    while new_key in target_dict:
-                        suffix += 1
-                        new_key = f"{key}{suffix}"
-                    target_dict[new_key] = value
+                    suffix += 1
+                trades_queue[user_id][-1][side].setdefault(category, {})[new_key] = val
 
+def finish_trade(user_id: int) -> None:
+    """
+    Finishes a trade by giving it special variables that puts it into a queue and gets outputed.
+
+    Args:
+    user_id (int): The ID of the user finishing the trade.
+    """
+    global trades_queue
+    trades_queue[user_id][-1]["finished"] = True
 
 def create_trade_embed(user_id:int, offer=True):
     """It's basically the home page of the trades
@@ -286,7 +298,7 @@ def create_trade_embed(user_id:int, offer=True):
         inline=True
     )
     offer_content=""
-    if (offer:=trades_queue.get(user_id,{}).get("offer",{})): # I did the most of the work so apologies gang 🥀🥀
+    if (offer:=trades_queue.get(user_id,[{}])[-1].get("offer",{})): # I did the most of the work so apologies gang 🥀🥀
         for key, values in offer.items():
             if key=="fruit":
                 offer_content+=f"{key.capitalize()}s:\n"
@@ -313,7 +325,7 @@ def create_trade_embed(user_id:int, offer=True):
     )
     
     request_content=""
-    if (request:=trades_queue.get(user_id,{}).get("request",{})):
+    if (request:=trades_queue.get(user_id,[{}])[-1].get("request",{})):
         for key, values in request.items():
             if key=="fruit":
                 request_content+=f"{key.capitalize()}s:\n"
@@ -368,6 +380,178 @@ class TradeCog(commands.Cog):
         self.bot.tree.add_command(self.trade_menu, guild=self.guild)
         print(f"{self.__class__.__name__} loaded successfully.")
 
+has_roles={ # TODO: Add the roles when deployed
+    "crab": 1395067333944414299
+}
+
+want_roles={
+    "crab": 1395067386259832973
+}
+
+class AcceptTradeButton(discord.ui.Button):
+    def __init__(self,original_trader_id:int):
+        
+        super().__init__(label="Accept Trade",style=discord.ButtonStyle.green)
+        self.original_trader_id=original_trader_id
+    
+    async def accept_trade(self,interaction:discord.Interaction):
+        guild=interaction.guild
+        if guild is None:
+            await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
+            return
+        target_user = await guild.fetch_member(self.original_trader_id)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            target_user: discord.PermissionOverwrite(view_channel=True, send_messages=True) # TODO Add the original trader
+        }
+        channel = await guild.create_text_channel(
+            name="trade-"+interaction.user.name+"-"+target_user.name, # Plus the original trader name
+            overwrites=overwrites
+        )
+        embed=discord.Embed(
+            title="Trading Guidelines",
+            description = 
+        """
+        1. Do not scam or attempt to scam others.
+        2. Be respectful and kind to other traders.
+        3. Do not spam or cause drama in the channel.
+        4. Trades must be fair and square.
+        5. Do not trade for real money.
+        6. Do not trade for other discord servers.
+        7. Do not trade for anything that is against Discord ToS.
+        """
+        )
+        await channel.send(embed=embed) 
+        await channel.send(f"Trade started between {interaction.user.mention} and {target_user.mention}")
+        
+        if channel is None:
+            await interaction.response.send_message(content="Channel creation failed.",ephemeral=True)
+            return
+        try:
+            await interaction.response.send_message(content="Trade accepted! Created channel: "+channel.mention,ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message(content="I don't have permissions to send a message to you.",ephemeral=True)
+    
+    async def callback(self,interaction:discord.Interaction):
+        await self.accept_trade(interaction)
+        # await interaction.response.defer()
+
+# Trade Handling
+class OfferCheckerCog(commands.Cog): # Thanks windsurf
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.queue = Queue()
+
+        
+
+    @tasks.loop(seconds=1)
+    async def check_offers(self):
+        # Placeholder - Logic to check offers and send messages
+        # Iterate over each client's offers and check conditions
+        # Send a message to a channel if conditions are met
+        await self.before_check_offers() # Fucking before_loop wont work for some reason
+        while not self.queue.empty():
+            id, trade = await self.queue.get()
+            request=trade.get('request',{'pets':[],'gears':[],'fruits':{}})
+            offer= trade.get('offer',{'pets':[],'gears':[],'fruits':{}})
+            guild = self.bot.get_guild(1177938272186544178)
+            user= guild.get_member(id)
+            
+            mentions=[] # List of roles that will be mentioned according to the roles
+            for key, values in request.items():
+                if key=="fruits":
+                    for fruit in values.keys():
+                        mentions.append(f"<@&{want_roles[fruit.lower()]}>")
+                        mentions.append(f"<@&{has_roles[fruit.lower()]}>")
+                else:
+                    for value in values:
+                        mentions.append(f"<@&{want_roles[value.lower()]}>")
+                        mentions.append(f"<@&{has_roles[value.lower()]}>")
+            
+            embed=discord.Embed(
+                title=f"New Trade!",
+                description=f"from {user.mention}",
+                color=discord.Color.green()
+            )
+            
+            offer_content=""
+            for key, values in offer.items():
+                if key=="fruit":
+                    offer_content+=f"{key.capitalize()}s:\n"
+                    for fruit,mutations in offer[key].items():
+                        offer_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
+                        for type, mutations in values[fruit].items():
+                            offer_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
+                            for mutation in mutations:
+                                offer_content+=f"- {mutation.capitalize()}\n" # Mutations
+                        offer_content+="\n"
+                else:
+                    offer_content+=f"{key.capitalize()}:\n"
+                    for value in values:
+                        offer_content+=f"- {value.capitalize()}\n"
+                offer_content+="\n"
+            
+            request_content=""
+            for key, values in request.items():
+                if key=="fruit":
+                    request_content+=f"{key.capitalize()}s:\n"
+                    for fruit,mutations in offer[key].items():
+                        request_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
+                        for type, mutations in values[fruit].items():
+                            request_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
+                            for mutation in mutations:
+                                request_content+=f"- {mutation.capitalize()}\n" # Mutations
+                        request_content+="\n"
+                else:
+                    request_content+=f"{key.capitalize()}:\n"
+                    for value in values:
+                        request_content+=f"- {value.capitalize()}\n"
+                request_content+="\n"
+            
+            embed.add_field(
+                name="Offer",
+                value=offer_content,
+                inline=True
+            )
+            embed.add_field(
+                name="Request",
+                value=request_content,
+                inline=True
+            )
+            view = discord.ui.View()
+            view.add_item(AcceptTradeButton(id))
+            channel = self.bot.get_channel(1395014416801595534)
+            await channel.send(content=", ".join(mentions),embed=embed, view=view)
+
+    async def before_check_offers(self):
+        
+        await self.bot.wait_until_ready()
+        
+        global trades_queue
+        valid_trades={}
+        for id, trades in trades_queue.items():
+            valid_trades[id]=[{}]
+            for i, trade in enumerate(trades):
+                if trade.get("finished", False):
+                    await self.queue.put((id, trade))
+                else:
+                    valid_trades[id][i]=trade
+        
+        trades_queue=valid_trades
+        
+        
+    async def cog_load(self):
+        await super().cog_load()
+        
+        self.check_offers.start()
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(TradeCog(bot))
-    print("TradeCog loaded successfully.")
+    await bot.add_cog(OfferCheckerCog(bot))
+    print("TradeCog and OfferCheckerCog loaded successfully.")
+
+
+# async def setup(bot: commands.Bot):
+#     await bot.add_cog(TradeCog(bot))
+#     print("TradeCog loaded successfully.")

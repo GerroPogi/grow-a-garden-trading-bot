@@ -91,7 +91,6 @@ class TradeView(ButtonPageView):
         
         for index in range(0,len(self.trade_dict[category]),24):
             values=["none"]+self.trade_dict[category][index:index+24] if isinstance(self.trade_dict[category],list) else list(self.trade_dict[category].keys())[index:index+24]
-            print("Valies: ",values)
             
             item=ItemSelect(
                 self.message["placeholder"],
@@ -127,7 +126,6 @@ class TradeView(ButtonPageView):
             
             async def callback(self1, interaction: discord.Interaction):
                 parent=self
-                print(parent.message)
                 embed= discord.Embed(
                     title=parent.message["title"],
                     description=parent.message["description"],
@@ -150,8 +148,6 @@ class TradeView(ButtonPageView):
                     ),
                     "view":parent
                     }
-                print(len(view.children),"len")
-                print(", ".join([str(type(item)) for item in view.children])," Children")
                 if len(view.children)<4: # Still has space for Go Back Trade Button 
                     view.add_item(GoBackTradeButton(location,parent.original_interaction))
                     print("Go back Trade Button is inside the view")
