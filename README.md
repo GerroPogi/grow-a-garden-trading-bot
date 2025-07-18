@@ -21,8 +21,8 @@ This bot is designed to make **Grow a Garden** trading **10× faster and safer**
 ### 🧱 UI Flow & Commands
 - [x] `/trade_view` UI to select plant/pet type
 - [ ] Add autocomplete or category filters for long item lists
-- [ ] Add confirm screen with accept/reject buttons
-- [ ] Allow multiple item offers (multi-offer UI)
+- [x] Add confirm screen with accept/reject buttons
+- [x] Allow multiple item offers (multi-offer UI)
 
 ### 🔐 Interaction Handling
 - [x] Prevent "interaction failed" messages (defer or auto-respond)
@@ -54,8 +54,8 @@ This bot is designed to make **Grow a Garden** trading **10× faster and safer**
 ## 🧵 Phase 3: Private Trade Channels
 
 ### 🧭 Channel Automation
-- [ ] Auto-create private trade channels for `/trade`
-- [ ] Add interactive UI to private channel
+- [x] Auto-create private trade channels for `/trade`
+- [x] Add interactive UI to private channel
 - [ ] Auto-close channel after success, cancel, or timeout
 - [ ] Send trade summary/receipt to both users
 
