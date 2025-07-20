@@ -8,6 +8,7 @@ Ts is for handling the trading. The UI and allat.
 
 import asyncio
 from asyncio import Queue
+import json
 import discord
 # from .trades._items import pets, gears, fruits, mutations # remove the dot when debugging cuz discord.py is the shit
 from discord.ext import commands, tasks
@@ -16,6 +17,7 @@ from views import DefaultTradingView
 # from trades.pets import PetsTradeView
 from discord import app_commands
 
+trades_channel_id= 1395014416801595534
 
 # Class to start it all
 
@@ -180,10 +182,41 @@ class RequestTrade(DefaultTradingView):
         
         await interaction.response.defer()
     
+    async def invalid_next(self):
+        
+        # Scolding lesson
+        description="You have not selected a trade to request. Please select a trade to request. "
+        embed=discord.Embed(
+            title="Invalid Trade",
+            description=description+"Restarting in 5 seconds",
+        )
+        await self.original_interaction.edit_original_response(embed=embed,view=discord.ui.View())
+        
+        await asyncio.sleep(1)
+        for i in range(4,0,-1):
+            embed.description=description+"Restarting in "+str(i)+" seconds"
+            await self.original_interaction.edit_original_response(embed=embed,view=discord.ui.View())
+            await asyncio.sleep(1)
+        
+        # Return back
+        embed= create_trade_embed(self.original_interaction.user.id)
+        view = OfferTrade(self.original_interaction)
+        await self.original_interaction.edit_original_response(embed=embed,view=view)
     
     @discord.ui.button(label="Confirm Trade",style=discord.ButtonStyle.green)
     async def confirm_callback(self,interaction:discord.Interaction, button: discord.ui.button):
-        finish_trade(interaction.user.id) # TODO Stop the trade when nothing for requests
+        if not trades_queue.get(interaction.user.id,[{}])[-1].get("request",{}):
+            await self.invalid_next()
+            # await interaction.response.defer()
+            return
+        
+        embed= discord.Embed(
+            title="Trade succesful!",
+            description=f"Your request can be seen at: <#{trades_channel_id}>"
+        )
+        
+        await self.original_interaction.edit_original_response(embed=embed,view=None)
+        finish_trade(interaction.user.id)
         await interaction.response.defer()
     
     
@@ -394,8 +427,17 @@ class AcceptTradeButton(discord.ui.Button):
         super().__init__(label="Accept Trade",style=discord.ButtonStyle.green)
         self.original_trader_id=original_trader_id
     
+    def set_message_id(self,message_id:int):
+        """This is for the later deletion of the channel
+
+        Args:
+            message_id (int): the ID that will be deleted
+        """
+        self.message_id=message_id
+    
     async def accept_trade(self,interaction:discord.Interaction):
         guild=interaction.guild
+        self.set_message_id(interaction.message.id)
         if guild is None:
             await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
             return
@@ -403,27 +445,32 @@ class AcceptTradeButton(discord.ui.Button):
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-            target_user: discord.PermissionOverwrite(view_channel=True, send_messages=True) # TODO Add the original trader
+            target_user: discord.PermissionOverwrite(view_channel=True, send_messages=True) 
         }
         channel = await guild.create_text_channel(
-            name="trade-"+interaction.user.name+"-"+target_user.name, # Plus the original trader name
+            name=f"trade-{self.message_id}-{target_user.name}",
             overwrites=overwrites
         )
         embed=discord.Embed(
             title="Trading Guidelines",
             description = 
-        """
-        1. Do not scam or attempt to scam others.
-        2. Be respectful and kind to other traders.
-        3. Do not spam or cause drama in the channel.
-        4. Trades must be fair and square.
-        5. Do not trade for real money.
-        6. Do not trade for other discord servers.
-        7. Do not trade for anything that is against Discord ToS.
-        """
+        (
+        "1. Do not scam or attempt to scam others. \n"
+        "2. Be respectful and kind to other traders. \n"
+        "3. Do not spam or cause drama in the channel. \n"
+        "4. Trades must be fair and square. \n"
+        "5. Do not trade for real money. \n"
+        "6. Do not trade for other discord servers. \n"
+        "7. Do not trade for anything that is against Discord ToS.\n"
+        "\nTo close the trade, please click the button below."
         )
-        await channel.send(embed=embed) 
+        )
+        view= discord.ui.View()
+        view.add_item(CloseTradeButton(target_user.id,self.message_id))
+        
         await channel.send(f"Trade started between {interaction.user.mention} and {target_user.mention}")
+        await channel.send(embed=embed,view=view) 
+        
         
         if channel is None:
             await interaction.response.send_message(content="Channel creation failed.",ephemeral=True)
@@ -436,6 +483,120 @@ class AcceptTradeButton(discord.ui.Button):
     async def callback(self,interaction:discord.Interaction):
         await self.accept_trade(interaction)
         # await interaction.response.defer()
+
+class AcceptSureTradeButton(discord.ui.Button):
+    def __init__(self,original_closer_id:int,initiator_id:int,message_id:int):
+        super().__init__(label="Yes, I wanna close",style=discord.ButtonStyle.green)
+        self.initiator_id = initiator_id
+        self.original_closer_id=original_closer_id
+        self.message_id=message_id
+    
+    async def callback(self,interaction:discord.Interaction):
+        guild=interaction.guild
+        if guild is None:
+            await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
+            return
+        if interaction.user.id == self.original_closer_id:
+            await interaction.response.send_message(content="You cannot close your own trade.",ephemeral=True)
+            return
+        await interaction.response.send_message(content="The opposite user is sure of closing. Closing channel.")
+        
+        target_user=await guild.fetch_member(self.initiator_id)
+        
+        channel_name = f"trade-{self.message_id}-{target_user.name}" # Refer to AcceptTradeButton class
+        
+        channel = discord.utils.get(guild.text_channels, name=channel_name)
+        if channel is None:
+            await interaction.followup.send(content="Channel not found.",ephemeral=True)
+            return
+        await asyncio.sleep(2)
+        await channel.delete()
+
+class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
+    report_summary = discord.ui.TextInput(label="Why did you report this trade?",style=discord.TextStyle.long,placeholder="Please describe here.",min_length=5,max_length=2048)
+    def __init__(self,original_closer_id:int,initiator_id:int,message_id:int):
+        super().__init__(timeout=None)
+        self.initiator_id = initiator_id
+        self.original_closer_id=original_closer_id
+        self.message_id=message_id
+    
+    async def on_submit(self,interaction:discord.Interaction):
+        guild=interaction.guild
+        if guild is None:
+            await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
+            return
+        target_user=await guild.fetch_member(self.initiator_id)
+        channel=discord.utils.get(guild.text_channels,name=f"trade-{self.message_id}-{target_user.name}")
+        if channel is None:
+            await interaction.response.send_message(content="Channel not found.",ephemeral=True)
+            return
+        
+        history = [message async for message in channel.history(limit=None)]
+        if len(history)==0:
+            await interaction.response.send_message(content="Channel history is empty.",ephemeral=True)
+            return
+        
+        report_content = {
+            "summary": self.report_summary.value,
+            "trade_id": self.message_id,
+            "messages":[]
+        }
+        for message in history:
+            report_content["messages"].append(f"{message.author.mention}: {message.content} {f'files:{message.attachments}' if message.attachments else ''}")
+            if message.attachments:
+                for attachment in message.attachments:
+                    await attachment.save(f"reports/attachments/{attachment.filename}")
+        json.dump(report_content,open(f"reports/{self.message_id}-{target_user.name}.report","w"),indent=4) # TODO: implement mongodb
+        
+        await interaction.response.send_message(content="Report sent.",ephemeral=True) # TODO: ask if they want to delete the channel
+
+class DeclineSureTradeButton(discord.ui.Button):
+    def __init__(self,original_closer_id:int,initiator_id:int,message_id:int):
+        super().__init__(label="No, I don't wanna close",style=discord.ButtonStyle.red)
+        self.original_closer_id=original_closer_id
+        self.message_id=message_id
+        self.initiator_id = initiator_id
+    
+    async def callback(self,interaction:discord.Interaction):
+        guild=interaction.guild
+        if guild is None:
+            await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
+            return
+        if interaction.user.id == self.original_closer_id:
+            await interaction.response.send_message(content="You cannot decline your own trade.",ephemeral=True)
+            return
+        
+        
+        
+        await interaction.response.send_modal(ReportTradeModal(self.original_closer_id,self.initiator_id,self.message_id))
+
+class CloseTradeButton(discord.ui.Button):
+    def __init__(self,target_user_id:int,message_id:int):
+        super().__init__(label="Close Trade",style=discord.ButtonStyle.red)
+        self.message_id=message_id
+        self.original_trader_id=target_user_id
+    
+    async def callback(self, interaction):
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
+            return
+        channel = await guild.fetch_channel(interaction.channel_id)
+        
+        view = discord.ui.View()
+        view.add_item(AcceptSureTradeButton(interaction.user.id,self.original_trader_id,self.message_id))
+        view.add_item(DeclineSureTradeButton(interaction.user.id,self.original_trader_id,self.message_id))
+        
+        
+        embed = discord.Embed(
+            title="Closing Trade",
+            description=f"{interaction.user.mention} wants to close the trade. Please click the button below to confirm the closure.",
+            color=discord.Color.red()
+            )
+        
+        await channel.send(embed=embed,view=view)
+        
+        await interaction.response.defer()
 
 # Trade Handling
 class OfferCheckerCog(commands.Cog): # Thanks windsurf
@@ -521,7 +682,7 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
             )
             view = discord.ui.View()
             view.add_item(AcceptTradeButton(id))
-            channel = self.bot.get_channel(1395014416801595534)
+            channel = self.bot.get_channel(trades_channel_id)
             await channel.send(content=", ".join(mentions),embed=embed, view=view)
 
     async def before_check_offers(self):

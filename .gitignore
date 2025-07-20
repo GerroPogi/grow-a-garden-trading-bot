@@ -1,6 +1,10 @@
 # Ignore token/config files
 .env
 
+# Report files
+*.report
+reports/attachments/*
+
 # Python cache
 __pycache__/
 *.pyc
