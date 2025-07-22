@@ -1,6 +1,6 @@
 import discord
 
-from cogs.trade import GoBackTradeButton
+from cogs.trade import GoBackTradeButton, create_trade_embed
 from views.buttons import ConfirmButton
 from ..defaultTrade import DefaultTradingView
 from ..buttonPageViews import ButtonPageView
@@ -100,7 +100,10 @@ class TradeView(ButtonPageView):
         
         
         return selects
-        
+    
+    async def goHome(self,interaction: discord.Interaction):
+        self.current_embed = create_trade_embed(interaction.user.id)
+        await super().goHome(interaction)
 
     def create_button(self,category:str) -> discord.ui.Button:
         """Creates a button to for a specific category that will show a new embed as well as a new select so that the screen doesnt get cluttered with random ahh stuff

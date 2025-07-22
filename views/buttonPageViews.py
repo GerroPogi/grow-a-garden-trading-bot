@@ -35,22 +35,20 @@ class ButtonPageView(discord.ui.View):
         self.items=items
         self.index=0
     
-    
+        
     
     async def setup(self):
         self.original_message=await self.original_interaction.original_response()
         [print(embed.title) for embed in self.original_interaction.message.embeds]
-        self.current_embed = self.original_interaction.message.embeds[-1] # TODO Update the current embed when the page changes
+        self.current_embed = self.original_interaction.message.embeds[0]
         if self.willGoHome:
             self.add_item(BackButton(self.goHome))
-        
         self.add_allowed_items()
         self.add_item(NextButton(self.goNext))
 
     async def goBack(self,interaction:discord.Interaction):
         self.clear_items()
         self.index-=3
-        
         
         if self.willGoHome or self.index>=3:
             self.add_item(BackButton(self.goBack if self.index>=3 else self.goHome))
@@ -61,13 +59,8 @@ class ButtonPageView(discord.ui.View):
         await interaction.response.defer()
     
     async def goHome(self, interaction: discord.Interaction):
-        # self.clear_items()
-        # self.add_item(BackButton(self.goBack))
-        # self.add_allowed_items()
-        # self.add_item(NextButton(self.goNext))
         
         content = self.original_message.content
-        # embed = self.original_message.embeds[0]
         
         await self.original_interaction.edit_original_response(content=content, embed=self.current_embed, view =self.homeView)
         await interaction.response.defer()
@@ -76,7 +69,6 @@ class ButtonPageView(discord.ui.View):
         self.clear_items()
         self.add_item(BackButton(self.goBack))
         self.index=self.index+3
-        # print(self.index)
         self.add_allowed_items()
         if self.index<=len(self.items)-3:
             self.add_item(NextButton(self.goNext))
