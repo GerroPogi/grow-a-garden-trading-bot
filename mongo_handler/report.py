@@ -16,3 +16,15 @@ def _add_report(url,report):
     update = {"$set": report}
     filter= {"trade_id": report["trade_id"]}
     col.update_one(filter, update, upsert=True)
+
+def _get_reports(url):
+    client = MongoClient(url)
+    db = client["gagbot"]
+    col = db["reports"]
+    return list(col.find())
+
+def _get_unchecked_reports(url):
+    client=MongoClient(url)
+    db = client["gagbot"]
+    col = db["reports"]
+    return list(col.find({"checked": False}))

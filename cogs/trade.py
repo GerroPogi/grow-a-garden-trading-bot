@@ -485,13 +485,14 @@ class AcceptTradeButton(discord.ui.Button):
         # await interaction.response.defer()
 
 class AcceptSureTradeButton(discord.ui.Button):
-    def __init__(self,original_closer_id:int,initiator_id:int,message_id:int):
+    def __init__(self,original_closer_id:int,initiator_id:int,message_id:int,positive:bool=True):
         super().__init__(label="Yes, I wanna close",style=discord.ButtonStyle.green)
         self.initiator_id = initiator_id
         self.original_closer_id=original_closer_id
         self.message_id=message_id
+        self.positive= positive
     
-    async def callback(self,interaction:discord.Interaction):
+    async def callback(self,interaction:discord.Interaction): # TODO check trade is not scam at all (just wants to close the channel)
         guild=interaction.guild
         if guild is None:
             await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
@@ -503,8 +504,7 @@ class AcceptSureTradeButton(discord.ui.Button):
         
         target_user=await guild.fetch_member(self.initiator_id)
         
-        from mongo_handler import make_trade_succesful
-        make_trade_succesful(self.message_id,self.initiator_id)
+        
         
         channel_name = f"trade-{self.message_id}-{target_user.name}" # Refer to AcceptTradeButton class
         
@@ -513,6 +513,13 @@ class AcceptSureTradeButton(discord.ui.Button):
             await interaction.followup.send(content="Channel not found.",ephemeral=True)
             return
         await asyncio.sleep(2)
+        if self.positive: # When the trade was done succesfully (no problems)
+            from mongo_handler import make_trade_succesful
+            make_trade_succesful(self.message_id,self.initiator_id)
+            # delete message from self.message_id
+            message = await guild.get_channel(trades_channel_id).fetch_message(self.message_id)
+            await message.delete()
+        
         await channel.delete()
 
 class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
@@ -544,6 +551,7 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
             "trade_id": f"{self.message_id}-{target_user.name}",
             "initiator_id": interaction.user.id,
             "trader_id": target_user.id,
+            "checked":False,
             "messages":[]
         }
         for message in history:
@@ -562,7 +570,7 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
             description="Please wait for awhile to get your report approved. At this time, you are free to choose whether to close the channel or not."
         )
         view= discord.ui.View()
-        view.add_item(AcceptSureTradeButton(self.original_closer_id,self.initiator_id,self.message_id))
+        view.add_item(AcceptSureTradeButton(self.original_closer_id,self.initiator_id,self.message_id,False))
         
         await interaction.response.send_message(content=None,embed=embed,view=view,ephemeral=True) 
 
@@ -704,7 +712,8 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
                 inline=True
             )
             view = discord.ui.View()
-            view.add_item(AcceptTradeButton(id))
+            sure_button = AcceptTradeButton(id)
+            view.add_item(sure_button)
             channel = self.bot.get_channel(trades_channel_id)
             message = await channel.send(content=", ".join(mentions),embed=embed, view=view)
             from mongo_handler import add_trade_to_db
@@ -734,12 +743,8 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
         
         self.check_offers.start()
 
-class ReportsCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        self.guild = discord.Object(id=1177938272186544178)  # Replace with your actual guild ID
+
         
-    
 
 async def setup(bot: commands.Bot):
     

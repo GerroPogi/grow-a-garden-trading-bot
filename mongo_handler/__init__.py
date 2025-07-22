@@ -1,4 +1,4 @@
-from .report import _add_report
+from .report import _add_report, _get_reports, _get_unchecked_reports
 from .trades import _add_trade_to_db, _make_trade_succesful
 from .reputation import _increment_reputation, _decrement_reputation, _get_reputation
 from main import load_env
@@ -13,6 +13,12 @@ def add_trade_to_db(user_id, value):
 
 def make_trade_succesful(message_id, user_id):
     _make_trade_succesful(URL, message_id, user_id)
+
+def get_reports():
+    return _get_reports(URL)
+
+def get_unchecked_reports():
+    return _get_unchecked_reports(URL)
 
 def check_mongo_connection():
     """
