@@ -503,6 +503,9 @@ class AcceptSureTradeButton(discord.ui.Button):
         
         target_user=await guild.fetch_member(self.initiator_id)
         
+        from mongo_handler import make_trade_succesful
+        make_trade_succesful(self.message_id,self.initiator_id)
+        
         channel_name = f"trade-{self.message_id}-{target_user.name}" # Refer to AcceptTradeButton class
         
         channel = discord.utils.get(guild.text_channels, name=channel_name)
@@ -538,17 +541,30 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
         
         report_content = {
             "summary": self.report_summary.value,
-            "trade_id": self.message_id,
+            "trade_id": f"{self.message_id}-{target_user.name}",
+            "initiator_id": interaction.user.id,
+            "trader_id": target_user.id,
             "messages":[]
         }
         for message in history:
-            report_content["messages"].append(f"{message.author.mention}: {message.content} {f'files:{message.attachments}' if message.attachments else ''}")
+            report_content["messages"].append(f"{message.author.mention}({message.author.name}): {message.content} {f'files:{message.attachments}' if message.attachments else ''}")
             if message.attachments:
                 for attachment in message.attachments:
                     await attachment.save(f"reports/attachments/{attachment.filename}")
-        json.dump(report_content,open(f"reports/{self.message_id}-{target_user.name}.report","w"),indent=4) # TODO: implement mongodb
         
-        await interaction.response.send_message(content="Report sent.",ephemeral=True) # TODO: ask if they want to delete the channel
+        print(report_content)
+        
+        from mongo_handler import add_report
+        add_report(report_content)
+        
+        embed = discord.Embed(
+            title="Report sent.",
+            description="Please wait for awhile to get your report approved. At this time, you are free to choose whether to close the channel or not."
+        )
+        view= discord.ui.View()
+        view.add_item(AcceptSureTradeButton(self.original_closer_id,self.initiator_id,self.message_id))
+        
+        await interaction.response.send_message(content=None,embed=embed,view=view,ephemeral=True) 
 
 class DeclineSureTradeButton(discord.ui.Button):
     def __init__(self,original_closer_id:int,initiator_id:int,message_id:int):
@@ -621,15 +637,22 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
             
             mentions=[] # List of roles that will be mentioned according to the roles
             for key, values in request.items():
+                
                 if key=="fruits":
                     for fruit in values.keys():
-                        mentions.append(f"<@&{want_roles[fruit.lower()]}>")
-                        mentions.append(f"<@&{has_roles[fruit.lower()]}>")
+                        try:
+                            mentions.append(f"<@&{want_roles[fruit.lower()]}>")
+                            mentions.append(f"<@&{has_roles[fruit.lower()]}>")
+                        except KeyError:
+                            print(f"Fruit {fruit} not found in roles.")
                 else:
                     for value in values:
-                        mentions.append(f"<@&{want_roles[value.lower()]}>")
-                        mentions.append(f"<@&{has_roles[value.lower()]}>")
-            
+                        try:
+                            mentions.append(f"<@&{want_roles[value.lower()]}>")
+                            mentions.append(f"<@&{has_roles[value.lower()]}>")
+                        except KeyError:
+                            print(f"Value {value} not found in roles.")
+                
             embed=discord.Embed(
                 title=f"New Trade!",
                 description=f"from {user.mention}",
@@ -683,7 +706,10 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
             view = discord.ui.View()
             view.add_item(AcceptTradeButton(id))
             channel = self.bot.get_channel(trades_channel_id)
-            await channel.send(content=", ".join(mentions),embed=embed, view=view)
+            message = await channel.send(content=", ".join(mentions),embed=embed, view=view)
+            from mongo_handler import add_trade_to_db
+            trade["message_id"]= message.id
+            add_trade_to_db(id,trade)
 
     async def before_check_offers(self):
         
@@ -695,6 +721,7 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
             valid_trades[id]=[{}]
             for i, trade in enumerate(trades):
                 if trade.get("finished", False):
+                    
                     await self.queue.put((id, trade))
                 else:
                     valid_trades[id][i]=trade
@@ -707,7 +734,15 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
         
         self.check_offers.start()
 
+class ReportsCog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.guild = discord.Object(id=1177938272186544178)  # Replace with your actual guild ID
+        
+    
+
 async def setup(bot: commands.Bot):
+    
     await bot.add_cog(TradeCog(bot))
     await bot.add_cog(OfferCheckerCog(bot))
     print("TradeCog and OfferCheckerCog loaded successfully.")

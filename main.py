@@ -57,6 +57,13 @@ class GrowAGardenBot(commands.Bot):
 bot = GrowAGardenBot()
 
 if __name__ == "__main__":
+    from mongo_handler import check_mongo_connection
+    if not check_mongo_connection():
+        print("MongoDB connection failed. Exiting.")
+        exit(1)
+    else:
+        print("MongoDB connection successful.")
+    
     try:
         bot.run()
     except KeyboardInterrupt:
