@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Discord Report Viewer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Discord Report Dashboard</h1>
+
+  {% for report in reports %}
+  <div class="report">
+    <div class="summary">
+      <strong>Summary:</strong> {{ report.summary }}
+    </div>
+    <div class="chat-box">
+      {% for msg in report.messages %}
+        <div class="message">{{ msg }}</div>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <button onclick="markReport('{{ report._id }}', 'valid')">Mark Valid</button>
+      <button onclick="markReport('{{ report._id }}', 'false')">Mark False</button>
+    </div>
+  </div>
+  {% endfor %}
+
+  <script>
+    function markReport(id, status) {
+      fetch("/mark", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id, status })
+      }).then(res => {
+        if (res.ok) alert(`Marked ${status}`);
+        else alert("Error marking report.");
+      });
+    }
+  </script>
+</body>
+</html>
