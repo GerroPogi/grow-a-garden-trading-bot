@@ -16,8 +16,9 @@ class ReportsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.guild = discord.Object(id=1177938272186544178)  
-        self.flask_app = FlaskApp()
+        self.flask_app = FlaskApp(bot)
         self.flask_app.start()
+        self.update_reports.start()
     
     @app_commands.command(name="reports", description="View all unchecked reports")
     async def reports(self, interaction: discord.Interaction):
@@ -41,6 +42,22 @@ class ReportsCog(commands.Cog):
 
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    @tasks.loop(seconds=10)
+    async def update_reports(self):
+        """ Periodically updates the reports in the Flask app.
+        """
+        from mongo_handler import get_unchecked_reports
+        current_reports = get_unchecked_reports() 
+        for report in current_reports:
+            if report['trade_id'] in self.flask_app.data_store:
+                continue
+            trade_id = report['trade_id']
+            clean_report = fix_report(report)
+            self.flask_app.cache_report(trade_id, clean_report)
+    
+    
+    
     async def cog_load(self):
         """ Called when the cog is loaded.
         """
@@ -71,7 +88,7 @@ def fix_report(report: dict) -> dict:
     report = make_serializable(report)
     
     messages = report.get('messages', [])
-    fixed_messages = messages[::-1][2:len(messages)-1] if len(messages) > 3 else []
+    fixed_messages = messages[::-1][2:] if len(messages) > 3 else []
     report['messages'] = fixed_messages
     return report
 
@@ -79,8 +96,10 @@ import types
 import uuid
 
 class FlaskApp:
-    def __init__(self):
+    def __init__(self,bot:commands.Bot):
         self.app = flask.Flask(__name__)
+        self.bot = bot
+        self.app.config['SECRET_KEY'] = str(uuid.uuid4())
         self.host = "0.0.0.0"
         self.port = 5000
         self.public_ip = "localhost"
@@ -88,14 +107,54 @@ class FlaskApp:
         self.data_store = {}  # Cache report data
 
         @self.app.route('/report/<trade_id>', methods=['GET'])
-        def dynamic_report(trade_id): # TODO add some html to make it look pretty (sigma) Also include some button that says who was in favor (can be none)
+        def dynamic_report(trade_id):
             report = self.data_store.get(trade_id)
             if report:
                 return render_template("report.html", report=report)
             return flask.jsonify({'error': 'Report not found'}), 404
-
         self.app_thread = None
+        
+        @self.app.route('/mark', methods=['POST'])
+        def mark_report():
+            data = flask.request.json
+            trade_id = data.get('trade_id')
+            trader_id = data.get('trader_id')
+            reputation = data.get('reputation')
+            comment = data.get('comment', None)  # Optional comment
 
+            if not trade_id or not trader_id or reputation is None:
+                return flask.jsonify({'error': 'Invalid data'}), 400
+            
+            # Here you would handle the marking logic, e.g., updating the database
+            # For now, we just print it
+            print(f"Marking report {trade_id} for trader {trader_id} with reputation {reputation}"+ (f" and comment: {comment}" if comment else ""))
+            
+            return flask.jsonify({'status': 'success', 'message': 'Report marked successfully'}), 200
+
+        @self.app.route('/find_user_name', methods=['POST'])
+        def find_user_name():
+            data = flask.request.json
+            username = data.get('user_id')
+            if not username:
+                return flask.jsonify({'error': 'Invalid data'}), 400
+            # Here you would handle the search logic, e.g., querying the database
+            # For now, we just print it
+            
+            print(f"Finding user with ID: {username}")
+            # Simulate finding a user
+            user = self.bot.get_user(int(username))  # Assuming user_id is a string of the user's ID
+            if not user:
+                return flask.jsonify({'error': 'User not found'}), 404
+            print(f"Found user: {user.name} ({user.id})")
+            return flask.jsonify({'status': 'success', 'message': 'User found successfully', 'user': {'name': user.name, 'id': user.id}}), 200
+
+        @self.app.route('/check/<trade_id>', methods=['GET'])
+        def check_report(trade_id):
+            from mongo_handler import check_report
+            if check_report(trade_id):
+                return flask.jsonify({'status': 'success', 'message': 'Report checked successfully'}), 200
+            return flask.jsonify({'error': 'Report not found'}), 404
+        
     def cache_report(self, trade_id: str, data: dict):
         self.data_store[trade_id] = data
 

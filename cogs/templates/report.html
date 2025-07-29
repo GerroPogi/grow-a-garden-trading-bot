@@ -1,3 +1,4 @@
+<!-- CHAT I DO NOT KNOW HOW TO MAKE A GOOD HTML I LET WINDSURF + GITHUB COPILOT + CHATGPT DO TS -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,30 +7,102 @@
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
-            background: #f0f0f0;
+            background: #838383ff;
         }
         .report-box {
-            background: white;
+            background: #3a3a3aff;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
         }
-        h2 {
-            color: #ff4444;
+        li, ul {
+            list-style-type: none;
+            padding: 0;
+            color:  #ffffffff;
+        }
+        h2,p,h3 {
+            color: #ffffffff;
         }
         .section {
             margin-bottom: 15px;
         }
         .section-title {
             font-weight: bold;
-            color: #333;
+            color: #ffa9a9ff;
         }
         pre {
             background-color: #eee;
             padding: 10px;
             border-radius: 6px;
         }
+        .avatar{
+            display: inline;
+            height: 20px; 
+            width: 20px; 
+            margin-right: 5px;
+        }
+        .username {
+            font-weight: bold;
+            color: #ffa9a9ff;
+            display: inline;
+        }
+        .hover-text {
+            visibility: hidden;
+            color: #ffffff;
+            font-size: 0.8em;
+        }
+        p:hover .hover-text {
+            visibility: visible;
+        }
     </style>
+    <script>
+            function markReport(reportId,traderId, reputation,comment=none) {
+                fetch("/mark", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ trade_id: reportId, trader_id: traderId, reputation: reputation ,comment: comment })
+                }).then(res => {
+                    if (res.ok) alert(`Marked ${reputation}`);
+                    else alert("Error marking report.");
+                });
+            }
+            function findUser() {
+                const userId = document.getElementById('userId').value;
+                fetch("/find_user_name", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                }).then(res => res.json())
+                  .then(data => {
+                      if (data.status === 'success') {
+                          return data.user.name;
+                      } else {
+                          alert("User not found.");
+                      }
+                  });
+            }
+            function updateUserElement(userId,elementName) {
+                const userElement = document.getElementById(elementName);
+                fetch("/find_user_name", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                }).then(res => res.json())
+                  .then(data => {
+                      if (data.status === 'success') {
+                          userElement.textContent = data.user.name;
+                      } else {
+                          userElement.textContent = 'User not found';
+                      }
+                  });
+            }
+        </script>
 </head>
 <body>
     <div class="report-box">
@@ -39,29 +112,71 @@
             <span class="section-title">Summary:</span>
             <p>{{ report.summary or 'No summary provided.' }}</p>
         </div>
+        
 
         {% if report.messages %}
         <div class="section">
             <span class="section-title">Messages:</span>
-            <ul>
-                {% for msg in report.messages %}
-                <li><strong>{{ msg }}</li>
-                {% endfor %}
-            </ul>
+            <br>
+            {% for msg in report.messages %}
+                <img src="{{ 'https://cdn.discordapp.com/embed/avatars/%d.png' % ((msg.id|int) % 5) }}" class="avatar" alt="Avatar">
+                <p class = "username"><strong>{{ msg.name }}:</strong></p>
+                <p>&emsp;{{ msg.content }}<span style="margin-left: 5px;" class="hover-text">{{ msg.created_at }}</span></p>
+                {% if msg.attachments %} 
+                    <a href="{{ msg.attachments[0] }}" target="_blank">[Attachment(s)]</a>
+                {% endif %} 
+            {% endfor %}
         </div>
         {% endif %}
 
-        {% if report.reason %}
         <div class="section">
-            <span class="section-title">Reason:</span>
-            <p>{{ report.reason }}</p>
-        </div>
-        {% endif %}
+            <span class="section-title">Actions:</span>
+            <br>
+            <p>Original Trader: <strong id="originalTraderName"></strong></p>
+            
+            <button onclick="this.disabled = true; markReport('{{ report.trade_id }}', 'valid', document.getElementById('originalTrader-reputation').value,document.getElementById('originalTrader-comment').value)">Submit</button>
+            <input type="number" id="originalTrader-reputation" name="originalTrader-reputation" min="-3" max="3" value="1">
+            <input type = "text", id="originalTrader-comment">
+            
+            <p>Trader: <strong id = "traderName"></strong></p>
+            <button onclick="this.disabled = true; markReport('{{ report.trade_id }}', 'false', document.getElementById('trader-reputation').value, document.getElementById('trader-comment').value)">Submit</button>
+            <input type="number" id="trader-reputation" name="trader-reputation" min="-3" max="3" value="1">
+            <input type = "text", id="trader-comment">
+            <script>
+                const originalTraderId = '{{ report.initiator_id }}';
+                console.log(`Original Trader ID: ${originalTraderId}`);
+                console.log(`Original Trader Name Element: ${document.getElementById('originalTraderName')}`);
+                if (originalTraderId) {
+                    updateUserElement(originalTraderId, 'originalTraderName');
+                } else {
+                    document.getElementById('originalTraderName').textContent = 'Unknown';
+                }
+                const traderId = '{{ report.trader_id }}';
+                console.log(`Trader ID: ${traderId}`);
+                console.log(`Trader Name Element: ${document.getElementById('traderName')}`);
+                if (traderId) {
+                    updateUserElement(traderId, 'traderName');
+                } else {
+                    document.getElementById('traderName').textContent = 'Unknown';
+                }
+            </script>
+            <button onclick="markAsDone('{{ report.trade_id }}')">Finish Report</button>
 
-        <!-- Optional: Add support/favor button -->
-        <div class="section">
-            <button onclick="alert('Feature not implemented yet')">In Favor?</button>
-        </div>
+            <script>
+                function markAsDone(tradeId) {
+                    fetch(`/checked/${tradeId}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+                    }).then(res => {
+                        if (res.ok) alert(`Marked as Done`);
+                        else alert("Error marking as done.");
+                    });
+                }
+            </script>
+            </div>
+        
     </div>
 </body>
 </html>

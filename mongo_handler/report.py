@@ -28,3 +28,18 @@ def _get_unchecked_reports(url):
     db = client["gagbot"]
     col = db["reports"]
     return list(col.find({"checked": False}))
+
+def _check_report(url, trade_id):
+    """
+    Marks a report as checked by setting the 'checked' field to True.
+    """
+    client = MongoClient(url)
+    db = client["gagbot"]
+    col = db["reports"]
+    
+    filter = {"trade_id": trade_id}
+    update = {"$set": {"checked": True}}
+    
+    result = col.update_one(filter, update)
+    
+    return result.modified_count > 0  # Returns True if the report was updated
