@@ -490,6 +490,42 @@ class AcceptTradeButton(discord.ui.Button):
         await self.accept_trade(interaction)
         # await interaction.response.defer()
 
+class ConfirmAcceptSureButton(discord.ui.Button):
+    def __init__(self,trade_data:dict):
+        super().__init__(label="Yes, I wanna close",style=discord.ButtonStyle.green)
+        self.trade_data=trade_data
+        
+        self.original_closer_id = trade_data.get("closer_id", None)
+        self.initiator_id = trade_data.get("original_trader_id", None)
+        self.message_id = trade_data.get("message_id", None)
+        self.trader_id = trade_data.get("trader_user_id", None)
+    
+    async def callback(self,interaction:discord.Interaction):
+        guild=interaction.guild
+        if guild is None:
+            await interaction.response.send_message(content="Guild is null, cannot create channel.",ephemeral=True)
+            return
+        
+        channel = await guild.fetch_channel(interaction.channel_id)
+        if channel is None:
+            await interaction.response.send_message(content="Channel not found.",ephemeral=True)
+            return
+        
+        self.trade_data["closer_id"] = interaction.user.id
+        
+        view = discord.ui.View()
+        view.add_item(AcceptSureTradeButton(self.trade_data))
+        view.add_item(DeclineSureTradeButton(self.trade_data))
+        
+        
+        embed = discord.Embed( # TODO add another button that asks for the user if they want to close the channel or report
+            title="Closing Trade",
+            description=f"{interaction.user.mention} wants to close the trade. Please click the button below to confirm the closure.",
+            color=discord.Color.red()
+            )
+        
+        await channel.send(embed=embed,view=view)
+
 class AcceptSureTradeButton(discord.ui.Button):
     def __init__(self,trade_data:dict,positive:bool=True):
         super().__init__(label="Yes, I wanna close",style=discord.ButtonStyle.green)
@@ -534,12 +570,13 @@ class AcceptSureTradeButton(discord.ui.Button):
 
 class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
     report_summary = discord.ui.TextInput(label="Why did you report this trade?",style=discord.TextStyle.long,placeholder="Please describe here.",min_length=5,max_length=2048)
-    def __init__(self,trade_data:dict):
+    def __init__(self,trade_data:dict,confirmed=True):
         super().__init__(timeout=None)
         self.trade_data= trade_data
         self.initiator_id = trade_data.get("original_trader_id",None)
         self.original_closer_id=trade_data.get("closer_id",None)
         self.message_id=trade_data.get("message_id",None)
+        self.confirmed = confirmed # If the other user is not sure of closing the trade, then this is True
     
     async def on_submit(self,interaction:discord.Interaction):
         guild=interaction.guild
@@ -548,7 +585,7 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
             return
         target_user=await guild.fetch_member(self.trade_data.get("trader_user_id", None))
         
-        channel=discord.utils.get(guild.text_channels,name=self.trade_data["channel_name"]) # TODO Fix bug when the target isnt the original closer
+        channel=discord.utils.get(guild.text_channels,name=self.trade_data["channel_name"])
         if channel is None:
             await interaction.response.send_message(content=f"Channel: trade-{self.message_id}-{target_user.name} not found.",ephemeral=True)
             return
@@ -585,19 +622,20 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
         embed = discord.Embed(
             title="Report sent.",
             description="Please wait for awhile to get your report approved. At this time, you are free to choose whether to close the channel or not."
-        )
+        ) # TODO Make it so that the other user can have a chance to close the channel themself using the self.confirmed
         view= discord.ui.View()
         view.add_item(AcceptSureTradeButton(self.trade_data,False))
         
         await interaction.response.send_message(content=None,embed=embed,view=view,ephemeral=True) 
 
 class DeclineSureTradeButton(discord.ui.Button):
-    def __init__(self,trade_data:dict):
+    def __init__(self,trade_data:dict,confirmed=True):
         super().__init__(label="No, I don't wanna close",style=discord.ButtonStyle.red)
         self.trade_data=trade_data
         self.original_closer_id=trade_data.get("closer_id", None)
         self.message_id=trade_data.get("message_id", None)
         self.initiator_id = trade_data.get("original_trader_id", None)
+        self.confirmed = confirmed # If the other user is not sure of closing the trade, then this is True
     
     async def callback(self,interaction:discord.Interaction):
         guild=interaction.guild
@@ -609,8 +647,7 @@ class DeclineSureTradeButton(discord.ui.Button):
             return
         
         
-        
-        await interaction.response.send_modal(ReportTradeModal(self.trade_data))
+        await interaction.response.send_modal(ReportTradeModal(self.trade_data,self.confirmed))
 
 class CloseTradeButton(discord.ui.Button):
     def __init__(self,trade_data:dict):
@@ -622,24 +659,18 @@ class CloseTradeButton(discord.ui.Button):
         if guild is None:
             await interaction.response.send_message(content="Guild is null, cannot fetch channel.",ephemeral=True)
             return
-        channel = await guild.fetch_channel(interaction.channel_id)
         
-        self.trade_data["closer_id"] = interaction.user.id
+        embed= discord.Embed(
+            title="Are you sure you want to close the trade?",
+            description="Please click the button below to confirm the closure.",
+            color=discord.Color.red()
+        )
         
         view = discord.ui.View()
-        view.add_item(AcceptSureTradeButton(self.trade_data))
-        view.add_item(DeclineSureTradeButton(self.trade_data))
+        view.add_item(ConfirmAcceptSureButton(self.trade_data))
+        view.add_item(DeclineSureTradeButton(self.trade_data,False))
         
-        
-        embed = discord.Embed( # TODO add another button that asks for the user if they want to close the channel or report
-            title="Closing Trade",
-            description=f"{interaction.user.mention} wants to close the trade. Please click the button below to confirm the closure.",
-            color=discord.Color.red()
-            )
-        
-        await channel.send(embed=embed,view=view)
-        
-        await interaction.response.defer()
+        await interaction.response.send_message(embed=embed,view=view,ephemeral=True)
 
 # Trade Handling
 class OfferCheckerCog(commands.Cog): # Thanks windsurf

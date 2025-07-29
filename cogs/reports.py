@@ -153,6 +153,7 @@ class FlaskApp:
             from mongo_handler import check_report
             if check_report(trade_id):
                 return flask.jsonify({'status': 'success', 'message': 'Report checked successfully'}), 200
+            self.data_store.pop(trade_id, None)  # Remove from cache if not found
             return flask.jsonify({'error': 'Report not found'}), 404
         
     def cache_report(self, trade_id: str, data: dict):
