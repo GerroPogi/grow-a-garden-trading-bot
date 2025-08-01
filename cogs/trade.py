@@ -594,7 +594,9 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
             "summary": self.report_summary.value,
             "trade_id": self.trade_data["channel_name"],
             "initiator_id": self.trade_data.get("original_trader_id", None),
+            "initiator_checked": False,
             "trader_id": self.trade_data.get("trader_user_id", None),
+            "trader_checked": False,
             "checked":False,
             "messages":[]
         }
@@ -622,9 +624,9 @@ class ReportTradeModal(discord.ui.Modal,title="Trade Report"):
         embed = discord.Embed(
             title="Report sent.",
             description="Please wait for awhile to get your report approved. At this time, you are free to choose whether to close the channel or not."
-        ) # TODO Make it so that the other user can have a chance to close the channel themself using the self.confirmed
+        ) 
         view= discord.ui.View()
-        view.add_item(AcceptSureTradeButton(self.trade_data,False))
+        view.add_item(CloseTradeButton(self.trade_data))
         
         await interaction.response.send_message(content=None,embed=embed,view=view,ephemeral=True) 
 

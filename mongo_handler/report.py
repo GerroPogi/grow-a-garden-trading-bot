@@ -3,19 +3,34 @@
 from pymongo import MongoClient
 
 
-def _add_report(url,report):
+def _add_report(url, report): # Holy crap copilot the GOAT
     """
-    Adds the report to the database "reports" collection.
-    If the report doesn't exist, add it.
-    If the report exists, update the value.
-    Refer to: cogs/trade.py:542
+    Inserts a new report into the "reports" collection with a unique trade_id.
+    If the trade_id exists, appends a suffix (-1, -2, etc.) to make it unique.
     """
     client = MongoClient(url)
     db = client["gagbot"]
     col = db["reports"]
-    update = {"$set": report}
-    filter= {"trade_id": report["trade_id"]}
-    col.update_one(filter, update, upsert=True)
+
+    base_trade_id = str(report["trade_id"])
+    existing_ids = [doc["trade_id"] for doc in col.find({"trade_id": {"$regex": f"^{base_trade_id}(-\d+)?$"}})]
+    
+    if base_trade_id in existing_ids:
+        # Find the highest suffix
+        suffixes = [0]
+        for tid in existing_ids:
+            if tid == base_trade_id:
+                suffixes.append(0)
+            elif tid.startswith(base_trade_id + "-"):
+                try:
+                    suffix = int(tid.split("-")[1])
+                    suffixes.append(suffix)
+                except (IndexError, ValueError):
+                    continue
+        next_suffix = max(suffixes) + 1
+        report["trade_id"] = f"{base_trade_id}-{next_suffix}"
+
+    col.insert_one(report)
 
 def _get_reports(url):
     client = MongoClient(url)

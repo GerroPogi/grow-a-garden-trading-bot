@@ -62,13 +62,14 @@
             text-decoration: none;
             display: inline-block;
             font-size: 16px;
-            margin: 4px 2px;
+            margin: 10px 2px;
             cursor: pointer;
             border-radius: 5px;
         }
     </style>
     <script>
             function markReport(reportId,traderId, reputation,comment=none) {
+                console.log(`Marking report ${reportId} for trader ${traderId} with reputation ${reputation}` + (comment ? ` and comment: ${comment}` : ""));
                 fetch("/mark", {
                     method: "POST",
                     headers: {
@@ -146,12 +147,20 @@
             <br>
             <p>Original Trader: <strong id="originalTraderName"></strong></p>
             
-            <button onclick="this.disabled = true; markReport('{{ report.trade_id }}', 'valid', document.getElementById('originalTrader-reputation').value,document.getElementById('originalTrader-comment').value)">Submit</button>
+            {% if not report.initiator_checked %}
+            <button onclick="this.disabled = true; markReport('{{ report.trade_id }}', '{{ report.initiator_id }}', document.getElementById('originalTrader-reputation').value,document.getElementById('originalTrader-comment').value)">Submit</button>
+            {% else %}
+            <button disabled>Already Checked</button>
+            {% endif %}
             <input type="number" id="originalTrader-reputation" name="originalTrader-reputation" min="-3" max="3" value="1">
             <input type = "text", id="originalTrader-comment">
             
             <p>Trader: <strong id = "traderName"></strong></p>
-            <button onclick="this.disabled = true; markReport('{{ report.trade_id }}', 'false', document.getElementById('trader-reputation').value, document.getElementById('trader-comment').value)">Submit</button>
+            {% if not report.trader_checked %}
+            <button onclick="this.disabled = true; markReport('{{ report.trade_id }}', '{{ report.trader_id }}', document.getElementById('trader-reputation').value, document.getElementById('trader-comment').value)">Submit</button>
+            {% else %}
+            <button disabled>Already Checked</button>
+            {% endif %}
             <input type="number" id="trader-reputation" name="trader-reputation" min="-3" max="3" value="1">
             <input type = "text", id="trader-comment">
             <script>
@@ -172,18 +181,19 @@
                     document.getElementById('traderName').textContent = 'Unknown';
                 }
             </script>
-            <button onclick="this.disabled=True; markAsDone('{{ report.trade_id }}')">Finish Report</button>
+            <br>
+            <button onclick="this.disabled=true; markAsDone('{{ report.trade_id }}')" class="submit">Finish Report</button>
 
             <script>
                 function markAsDone(tradeId) {
-                    fetch(`/checked/${tradeId}`, {
+                    fetch(`/check/${tradeId}`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
                         }
                     }).then(res => {
                         if (res.ok) alert(`Marked as Done`);
-                        else alert("Error marking as done.");
+                        else alert("Error marking as done."+ res.json());
                     });
                 }
             </script>

@@ -29,3 +29,29 @@ def _make_trade_succesful(url, message_id, user_id):
     
     col.update_one(filter, { "$set": { "value.$.done": True } })
     print("Made trade successful for user:", user_id, "with message_id:", message_id)
+
+def _check_trader(url, trade_id, trader_id):
+    """
+    Set the trader as checked in the report.
+    If trader_id matches 'initiator_id', set 'initiator_checked' to True.
+    If trader_id matches 'trader_id', set 'trader_checked' to True.
+    """
+    from pymongo import MongoClient
+    client = MongoClient(url)
+    db = client["gagbot"]
+    col = db["reports"]
+
+    filter = { "trade_id": trade_id }
+    report = col.find_one(filter)
+
+    if not report:
+        return False
+    print(report.get("initiator_id") == trader_id, report.get("trader_id") == trader_id, "Checking trader:", trade_id, trader_id)
+    if report.get("initiator_id") == trader_id: 
+        col.update_one(filter, { "$set": { "initiator_checked": True } })   
+        return True
+    elif report.get("trader_id") == trader_id:
+        col.update_one(filter, { "$set": { "trader_checked": True } })
+        return True
+    else:
+        return False

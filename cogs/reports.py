@@ -110,7 +110,11 @@ class FlaskApp:
         def dynamic_report(trade_id):
             report = self.data_store.get(trade_id)
             if report:
-                return render_template("report.html", report=report)
+                from mongo_handler import get_unchecked_reports
+                unchecked_reports = get_unchecked_reports()
+                report= next((r for r in unchecked_reports if r['trade_id'] == trade_id), None)
+                fixed_report = fix_report(report)
+                return render_template("report.html", report=fixed_report)
             return flask.jsonify({'error': 'Report not found'}), 404
         self.app_thread = None
         
@@ -119,15 +123,22 @@ class FlaskApp:
             data = flask.request.json
             trade_id = data.get('trade_id')
             trader_id = data.get('trader_id')
-            reputation = data.get('reputation')
+            reputation = int(data.get('reputation'))
             comment = data.get('comment', None)  # Optional comment
 
             if not trade_id or not trader_id or reputation is None:
                 return flask.jsonify({'error': 'Invalid data'}), 400
             
             # Here you would handle the marking logic, e.g., updating the database
-            # For now, we just print it
-            print(f"Marking report {trade_id} for trader {trader_id} with reputation {reputation}"+ (f" and comment: {comment}" if comment else ""))
+            from mongo_handler import increment_reputation, decrement_reputation, add_comment,check_trader
+            if reputation > 0:
+                increment_reputation(trader_id, increment=reputation)
+            elif reputation < 0:
+                decrement_reputation(trader_id, decrement=-reputation)
+            if comment:
+                add_comment(trader_id, comment)
+            print("Checking trader OUT", trade_id, trader_id, check_trader(trade_id, int(trader_id)))
+            
             
             return flask.jsonify({'status': 'success', 'message': 'Report marked successfully'}), 200
 
@@ -148,14 +159,26 @@ class FlaskApp:
             print(f"Found user: {user.name} ({user.id})")
             return flask.jsonify({'status': 'success', 'message': 'User found successfully', 'user': {'name': user.name, 'id': user.id}}), 200
 
-        @self.app.route('/check/<trade_id>', methods=['GET'])
+        @self.app.route('/check/<trade_id>', methods=['POST'])
         def check_report(trade_id):
             from mongo_handler import check_report
-            if check_report(trade_id):
+            res = check_report(trade_id)
+            if res:
+                self.data_store.pop(trade_id, None) # Will remove the report from the cache
                 return flask.jsonify({'status': 'success', 'message': 'Report checked successfully'}), 200
-            self.data_store.pop(trade_id, None)  # Remove from cache if not found
+            
             return flask.jsonify({'error': 'Report not found'}), 404
         
+        @self.app.route("/check_trader/<trade_id>", methods=["POST"])
+        def check_trader(trade_id): # Turns out copilot had a better idea than me so i js leave ts
+            data = flask.request.json
+            trader_id = data.get('trader_id')
+            if not trader_id:
+                return flask.jsonify({'error': 'Invalid data'}), 400
+            
+            from mongo_handler import check_trader
+            check_trader(trade_id, trader_id)
+            return flask.jsonify({'status': 'success', 'message': 'Trader checked successfully','checked':check_trader(trade_id, trader_id)}), 200
     def cache_report(self, trade_id: str, data: dict):
         self.data_store[trade_id] = data
 
