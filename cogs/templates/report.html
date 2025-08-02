@@ -20,7 +20,7 @@
             padding: 0;
             color:  #ffffffff;
         }
-        h2,p,h3 {
+        h2,p,h3,summary {
             color: #ffffffff;
         }
         .section {
@@ -131,14 +131,47 @@
                     fetch(`/get_trade/{{ report.trade_id }}`)
                         .then(response => response.json())
                         .then(data => {
-                            document.getElementById('trade-items').textContent =
-                                Object.keys(data.request).map(type => {
-                                    return `${type} (${data.request[type].join(', ')})`;
-                                }).join(', ') +
-                                ' for ' +
-                                Object.keys(data.offer).map(type => {
-                                    return `${type} (${data.offer[type].join(', ')})`;
-                                }).join(', ') + '.';
+                            // Build HTML for request and offer sections
+                            let html = '';
+                            // REQUEST SECTION
+                            html += `<h3 style="color:#ffa9a9ff;">Request</h3>`;
+                            Object.keys(data.request).forEach(type => {
+                                html += `<h4 style="color:#ffdadaff;">${type.charAt(0).toUpperCase() + type.slice(1)}</h4>`;
+                                if (type === "fruit") {
+                                    const fruitList = data.request[type];
+                                    html += '<ul>';
+                                    Object.entries(fruitList).forEach(([fruitName, attrs]) => {
+                                        html += `<li>${fruitName}: ${Object.values(attrs).map(attrValues => attrValues.join(' + ')).join(' + ')}</li>`;
+                                    });
+                                    html += '</ul>';
+                                } else {
+                                    html += `<ul>`;
+                                    data.request[type].forEach(item => {
+                                        html += `<li>${item}</li>`;
+                                    });
+                                    html += `</ul>`;
+                                }
+                            });
+                            // OFFER SECTION
+                            html += `<h3 style="color:#ffa9a9ff;">Offer</h3>`;
+                            Object.keys(data.offer).forEach(type => {
+                                html += `<h4 style="color:#ffdadaff;">${type.charAt(0).toUpperCase() + type.slice(1)}</h4>`;
+                                if (type === "fruit") {
+                                    const fruitList = data.offer[type];
+                                    html += '<ul>';
+                                    Object.entries(fruitList).forEach(([fruitName, attrs]) => {
+                                        html += `<li>${fruitName}: ${Object.values(attrs).map(attrValues => attrValues.join(' + ')).join(' + ')}</li>`;
+                                    });
+                                    html += '</ul>';
+                                } else {
+                                    html += `<ul>`;
+                                    data.offer[type].forEach(item => {
+                                        html += `<li>${item}</li>`;
+                                    });
+                                    html += `</ul>`;
+                                }
+                            });
+                            document.getElementById('trade-items').innerHTML = html;
                         })
                         .catch(() => {
                             document.getElementById('trade-items').textContent = 'Error loading items.';
