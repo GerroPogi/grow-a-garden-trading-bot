@@ -420,11 +420,13 @@ want_roles={
 }
 
 class AcceptTradeButton(discord.ui.Button):
-    def __init__(self,original_trader_id:int):
+    def __init__(self,original_trader_id:int,request:dict, offer:dict):
         
         super().__init__(label="Accept Trade",style=discord.ButtonStyle.green)
         self.trade_data = {
-            "original_trader_id": original_trader_id
+            "original_trader_id": original_trader_id,
+            "request":request,
+            "offer": offer,
         }
     
     def set_message_id(self,message_id:int):
@@ -457,7 +459,70 @@ class AcceptTradeButton(discord.ui.Button):
             overwrites=overwrites
         )
         self.trade_data["channel_name"] = channel_name
-        embed=discord.Embed(
+        
+        trade_embed=discord.Embed(
+            title="Trade Accepted!",
+            description=f"Trade accepted between {interaction.user.mention} and {original_trader.mention}!"
+        )
+        offer= self.trade_data.get("offer", {})
+        offer_content=""
+        if (offer): # I did the most of the work so apologies gang 🥀🥀 copied pasted from the create_embed ffunction
+            for key, values in offer.items():
+                if key=="fruit":
+                    offer_content+=f"{key.capitalize()}s:\n"
+                    print(offer,"trades")  
+                    for fruit,mutations in offer[key].items():
+                        offer_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
+                        for type, mutations in values[fruit].items():
+                            offer_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
+                            print(mutations,"mutations")
+                            for mutation in mutations:
+                                offer_content+=f"- {mutation.capitalize()}\n" # Mutations
+                        offer_content+="\n"
+                else:
+                    offer_content+=f"{key.capitalize()}:\n"
+                    for value in values:
+                        offer_content+=f"- {value.capitalize()}\n"
+                offer_content+="\n"
+        else:
+            offer_content="No offer yet."
+        
+        trade_embed.add_field(
+            name="Offer",
+            value=offer_content, 
+            inline=False
+        )
+        
+        request= self.trade_data.get("request", {})
+        request_content=""
+        if (request):
+            for key, values in request.items():
+                if key=="fruit":
+                    request_content+=f"{key.capitalize()}s:\n"
+                    for fruit,mutations in request[key].items():
+                        request_content+=f"__**{fruit.capitalize()}**__:\n" # Fruits
+                        for type, mutations in values[fruit].items():
+                            request_content+=f"**{type.capitalize()} Mutations**:\n" # mutation type
+                            for mutation in mutations:
+                                request_content+=f"- {mutation.capitalize()}\n" # Mutations
+                        request_content+="\n"
+                else:
+                    request_content+=f"{key.capitalize()}:\n"
+                    for value in values:
+                        request_content+=f"- {value.capitalize()}\n"
+                request_content+="\n"
+        else:
+            request_content="No request yet."
+        
+        trade_embed.add_field(
+            name="Request",
+            value=request_content,
+            inline=False
+        )
+        
+        await channel.send(embed=trade_embed)
+        
+        guideline_embed=discord.Embed(
             title="Trading Guidelines",
             description = 
         (
@@ -475,7 +540,7 @@ class AcceptTradeButton(discord.ui.Button):
         view.add_item(CloseTradeButton(self.trade_data))
         
         await channel.send(f"Trade started between {interaction.user.mention} and {original_trader.mention}")
-        await channel.send(embed=embed,view=view) 
+        await channel.send(embed=guideline_embed,view=view) 
         
         
         if channel is None:
@@ -518,7 +583,7 @@ class ConfirmAcceptSureButton(discord.ui.Button):
         view.add_item(DeclineSureTradeButton(self.trade_data))
         
         
-        embed = discord.Embed( # TODO add another button that asks for the user if they want to close the channel or report
+        embed = discord.Embed(
             title="Closing Trade",
             description=f"{interaction.user.mention} wants to close the trade. Please click the button below to confirm the closure.",
             color=discord.Color.red()
@@ -764,7 +829,7 @@ class OfferCheckerCog(commands.Cog): # Thanks windsurf
                 inline=True
             )
             view = discord.ui.View()
-            sure_button = AcceptTradeButton(id)
+            sure_button = AcceptTradeButton(id,request,offer)
             view.add_item(sure_button)
             channel = self.bot.get_channel(trades_channel_id)
             message = await channel.send(content=", ".join(mentions),embed=embed, view=view)

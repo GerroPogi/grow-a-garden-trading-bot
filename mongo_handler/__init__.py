@@ -1,9 +1,15 @@
 from .report import _add_report, _get_reports, _get_unchecked_reports, _check_report
-from .trades import _add_trade_to_db, _check_trader, _make_trade_succesful
+from .trades import _add_trade_to_db, _check_trader, _make_trade_succesful, _get_trade
 from .reputation import _increment_reputation, _decrement_reputation, _get_reputation, _add_comment
 from main import load_env
 
 URL = load_env()["MONGO_DB"]
+
+def get_trade(trade_id):
+    """
+    Retrieves a trade by its trade_id.
+    """
+    return _get_trade(URL, trade_id)
 
 def check_report(trade_id): 
     return _check_report(URL, trade_id)

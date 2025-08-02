@@ -122,6 +122,42 @@
         <h2>Trade Report - {{ report.trade_id }}</h2>
 
         <div class="section">
+            <span class="section-title">Trade Information:</span>
+            
+            <details>
+                <summary>Items to be traded:</summary>
+                <p id="trade-items">Loading trade items...</p>
+                <script>
+                    fetch(`/get_trade/{{ report.trade_id }}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('trade-items').textContent =
+                                Object.keys(data.request).map(type => {
+                                    return `${type} (${data.request[type].join(', ')})`;
+                                }).join(', ') +
+                                ' for ' +
+                                Object.keys(data.offer).map(type => {
+                                    return `${type} (${data.offer[type].join(', ')})`;
+                                }).join(', ') + '.';
+                        })
+                        .catch(() => {
+                            document.getElementById('trade-items').textContent = 'Error loading items.';
+                        });
+                </script>
+            </details>
+            <details>
+                <summary>Additional Information</summary>
+                <ul>
+                    <li><strong>Trade ID:</strong> {{ report.trade_id }}</li>
+                    <li><strong>Initiator ID:</strong> {{ report.initiator_id }}</li>
+                    <li><strong>Trader ID:</strong> {{ report.trader_id }}</li>
+                    <li><strong>Initiator Name:</strong> <span id="originalTraderName"></span></li>
+                    <li><strong>Trader Name:</strong> <span id="traderName"></span></li>
+                </ul>
+            </details>
+        </div>
+
+        <div class="section">
             <span class="section-title">Summary:</span>
             <p>{{ report.summary or 'No summary provided.' }}</p>
         </div>

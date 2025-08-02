@@ -169,6 +169,18 @@ class FlaskApp:
             
             return flask.jsonify({'error': 'Report not found'}), 404
         
+        @self.app.route("/get_trade/<trade_id>", methods=["GET"])
+        def get_trade(trade_id):
+            from mongo_handler import get_trade
+            short_trade_id = trade_id[6:25]
+            trade = get_trade(short_trade_id)
+            if not trade:
+                return flask.jsonify({'error': 'Trade not found'}), 404
+            
+            # Fix the report for serialization
+            fixed_trade = fix_report(trade)
+            return flask.jsonify(fixed_trade), 200
+        
         @self.app.route("/check_trader/<trade_id>", methods=["POST"])
         def check_trader(trade_id): # Turns out copilot had a better idea than me so i js leave ts
             data = flask.request.json

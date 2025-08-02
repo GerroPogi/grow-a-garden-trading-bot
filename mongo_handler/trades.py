@@ -55,3 +55,20 @@ def _check_trader(url, trade_id, trader_id):
         return True
     else:
         return False
+
+def _get_trade(url, trade_id):
+    """
+    Retrieves a trade by its trade_id (first 26 characters).
+    """
+    from pymongo import MongoClient
+    client = MongoClient(url)
+    db = client["gagbot"]
+    col = db["trades"]
+    filter = { "value.message_id": int(trade_id) }
+    user = col.find_one(filter) # Finds the user that has the certain trade_id
+    values = user.get("value") # Finds the trades that have the certain trade_id
+    for trade in values:
+        if trade.get("message_id") == int(trade_id):
+            
+            return {**trade, "user_id": user.get("user_id")}
+    return None

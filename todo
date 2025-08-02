@@ -6,7 +6,7 @@
 ## Tasks
 
 
-- [ ] reputation system
+
 - [ ] Make pets value system (stock market) (still learning how) 
 
 ## In Progress
@@ -17,6 +17,7 @@
 
 ## Completed
 
+- [x] reputation system
 - [x] Player accept trade
 - [x] Player gets ping for trade
 - [x] Player create a trade
