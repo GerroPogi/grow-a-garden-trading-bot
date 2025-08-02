@@ -717,9 +717,10 @@ class DeclineSureTradeButton(discord.ui.Button):
         await interaction.response.send_modal(ReportTradeModal(self.trade_data,self.confirmed))
 
 class CloseTradeButton(discord.ui.Button):
-    def __init__(self,trade_data:dict):
+    def __init__(self,trade_data:dict, confirmed=False):
         super().__init__(label="Close Trade",style=discord.ButtonStyle.red)
         self.trade_data = trade_data
+        self.confirmed=confirmed
     
     async def callback(self, interaction):
         guild = interaction.guild
